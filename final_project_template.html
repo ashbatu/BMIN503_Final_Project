@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.0.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Ashley Batugo">
+
+<title>Evaluating EHR Data Sources and Provider Contexts for Predicting Clinical Trial Exclusions in Obstructive Sleep Apnea (OSA) Screening</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+<script src="final_project_template_files/libs/clipboard/clipboard.min.js"></script>
+<script src="final_project_template_files/libs/quarto-html/quarto.js"></script>
+<script src="final_project_template_files/libs/quarto-html/popper.min.js"></script>
+<script src="final_project_template_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="final_project_template_files/libs/quarto-html/anchor.min.js"></script>
+<link href="final_project_template_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="final_project_template_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="final_project_template_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="final_project_template_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="final_project_template_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Evaluating EHR Data Sources and Provider Contexts for Predicting Clinical Trial Exclusions in Obstructive Sleep Apnea (OSA) Screening</h1>
+<p class="subtitle lead">BMIN503/EPID600 Final Project</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Ashley Batugo </p>
+          </div>
+  </div>
+    
+    
+  </div>
+  
+
+</header>
+
+<hr>
+<section id="sec-overview" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="sec-overview"><span class="header-section-number">1</span> Overview</h2>
+<p>This project examined which combinations of EHR data sources, provider specialties, and temporal windows most effectively predicted exclusion criteria during Obstructive Sleep Apnea (OSA) trial screening. Using manually chart-reviewed exclusion cases from during 2025 trial recruitment, I constructed an evidence-level analytical data set integrating note-level and structured EHR features and applied logistic regression with Synthetic Minority Oversampling Technique (SMOTE) to address class imbalance. Discussions with Dr.&nbsp;Danielle Mowery and Emily Schriver helped shape the dataset design and modeling strategy for working with a small sample. The materials for this project can be found in this <a href="https://github.com/ashbatu/BMIN503_Final_Project">Github repository</a>.</p>
+</section>
+<section id="sec-introduction" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="sec-introduction"><span class="header-section-number">2</span> Introduction</h2>
+<p>Clinical research is essential for advancing medical knowledge, particularly for conditions that are often underrecognized and underdiagnosed, such as OSA (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3096276/">Motamedi et al., 2009</a>). Successful clinical trials depend on many factors including strong study design, careful planning, timely recruitment, and sustained participation retention (<a href="https://journals.sagepub.com/doi/full/10.1177/1740774519829709?casa_token=mm71iIUcfGkAAAAA%3AvRwJV3xTHnNLQ2-WsNICmuzN-IQLbLRioaR-lmo3lrqEWKBfZ-WFaB21-bRNLq34dCeeWsCGKWi9Yg">Lai et al., 2019</a>). However, identifying eligible patients remains one of the major challenges in clinical research (<a href="https://acrjournals.onlinelibrary.wiley.com/doi/10.1002/acr2.11289#:~:text=The%20LiiRA%20study%20team%20incorporated,not%20screening%20out%20eligible%20patients.">Cai et al., 2021</a>). With the widespread use of electronic health records (EHRs), researchers increasingly rely on EHR data to assist with recruitment. Yet the process of manually reviewing charts to determine patient eligibility and exclusion status is complex, requires clinical expertise, and can take hours each day, which slows recruitment and add significant burden to study teams (<a href="https://www.linkedin.com/pulse/chart-review-should-sponsors-pay-clinical-research-sites-etchberger#:~:text=Some%20trials%20remain%20very%20complicated,takes%20to%20find%20those%20patients.">Etchberger, 2016</a>). These challenges are particularly critical for milestone-driven NIH-funded projects, where delays in meeting recruitment goals can jeopardize continued funding. This project was motivated by an ongoing NIH-funded OSA clinical trial I am part of, where our team has faced recruitment delays due to how resource intensive the chart review process is for our clinical research coordinators.</p>
+<p>Addressing this problem requires collaboration with experts from different fields including medicine, informatics, and clinical research operations. Clinicians provide the judgement needed to determine which patients should be included or excluded, assist with recruitment within their own patient populations, and interpret the context of the notes and patient charts. Informatics and data science contribute the methods to extract, organize, and analyze EHR data to identify patients who may meet or fail eligibility criteria. Additionally, this problem is directly tied to clinical research operations, since improving recruitment directly benefits those responsible for identifying, reaching out, and enrolling participants. In developing this project, conversations with Dr.&nbsp;Danielle Mowery, Director of the Institute for Biomedical Informatics (CIC), and Emily Schriver, a translational data scientist in the CIC, helped clarify how informatics can be applied to identify meaningful EHR features that support clinical teams in improving recruitment workflows.</p>
+</section>
+<section id="sec-methods" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="sec-methods"><span class="header-section-number">3</span> Methods</h2>
+<p>Describe the data used and general methodological approach used to address the problem described in the <a href="#sec-introduction">Section&nbsp;2</a>. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.</p>
+</section>
+<section id="sec-results" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="sec-results"><span class="header-section-number">4</span> Results</h2>
+<p>Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the <a href="#sec-methods">Section&nbsp;3</a> as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you’d like, but this is not required.</p>
+</section>
+<section id="conclusion" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">5</span> Conclusion</h2>
+<p>This the conclusion. The <a href="#sec-results">Section&nbsp;4</a> can be invoked here.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
