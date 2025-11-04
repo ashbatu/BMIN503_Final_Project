@@ -2,7 +2,12 @@
 title: "Evaluating EHR Data Sources and Provider Contexts for Predicting Clinical Trial Exclusions in Obstructive Sleep Apnea (OSA) Screening"
 subtitle: "BMIN503/EPID600 Final Project"
 author: "Ashley Batugo"
-format: html
+format: 
+  html:
+    theme: lumen
+    self-contained: true
+    embed-resources: true
+    df-print: paged
 editor: visual
 number-sections: true
 embed-resources: true
