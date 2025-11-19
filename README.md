@@ -1,19 +1,13 @@
-# BMIN503/EPID600 Final Project
+# Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals
+**Author:** Ashley Batugo
 
-This repository contains templates for the final written report and GitHub repository. Follow the instructions below to clone this repository, and then turn in your final project's code via a pull request to this repository.
+## Overview 
 
-1. To start, **fork** this BMIN503_Final_Project repository.
-1. **Clone** the forked repository to your computer.
-1. Modify the files provided, add your own, and **commit** changes to complete your final project.
-1. **Push**/sync the changes up to your GitHub account.
-1. Create a **pull request** on this, the original BMIN503_Final_Project, repository to turn in your final project.
+This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) study using LLM extracted note-level evidence, to aggregate these signals into a patient-level dataset. Logistic regression was conducted using the patient-level dataset to identify which metadata features were most associated with both informal and formal exclusionary contexts.
 
+## Repository Structure
 
-Follow the instructions [here][forking] if you are unsure what the above steps mean.
+1. **final_project_BATUGO.html**: HTML file of the final project report.
+2. **final_project_BATUGO.qmd**: QMD file of the final project report.
 
-DUE DATE FOR FINAL VERSION: 12/13/24 11:59PM. This is a hard deadline. Turn in whatever you have by this date.
-
-
-<!-- Links -->
-[forking]: https://guides.github.com/activities/forking/
 

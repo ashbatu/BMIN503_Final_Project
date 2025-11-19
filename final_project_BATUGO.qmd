@@ -1,0 +1,127 @@
+---
+title: "Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals"
+subtitle: "BMIN503/EPID600 Final Project"
+author: "Ashley Batugo"
+format: 
+  html:
+    theme: lumen
+    self-contained: true
+    embed-resources: true
+    df-print: paged
+editor: visual
+number-sections: true
+embed-resources: true
+---
+
+------------------------------------------------------------------------
+
+## Overview {#sec-overview}
+
+This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) study. CRCs rely on two categories of information found in unstructured EHR notes: true clinical contraindications such as active medical instability and operational skip signals including recent surgery, hospitalization or pending procedures. Using LLM extracted note-level evidence, I aggregated these signals into a patient-level dataset and applied logistic regression to identify which metadata features were most associated with both informal and formal exclusionary contexts. Discussions with Dr. Danielle Mowery and Emily Schriver helped shape the dataset design and modeling strategy and Paula Salvador, the CRC for this study, provided insights into the pre-screening process and the reasons behind choosing not to reach out to certain patients. The materials for this project can be found in this [Github repository](https://github.com/ashbatu/BMIN503_Final_Project).
+
+## Introduction {#sec-introduction}
+
+Clinical research is essential for advancing medical knowledge, particularly for conditions that are often underrecognized and underdiagnosed, such as OSA ([Motamedi et al., 2009](https://pmc.ncbi.nlm.nih.gov/articles/PMC3096276/)). Similar to clinical trials, prospective clinical studies depend on many factors including strong study design, careful planning, timely recruitment, and sustained participation retention ([Lai et al., 2019](https://journals.sagepub.com/doi/full/10.1177/1740774519829709?casa_token=mm71iIUcfGkAAAAA%3AvRwJV3xTHnNLQ2-WsNICmuzN-IQLbLRioaR-lmo3lrqEWKBfZ-WFaB21-bRNLq34dCeeWsCGKWi9Yg)). However, identifying eligible patients remains one of the major challenges in clinical research ([Cai et al., 2021](https://acrjournals.onlinelibrary.wiley.com/doi/10.1002/acr2.11289#:~:text=The%20LiiRA%20study%20team%20incorporated,not%20screening%20out%20eligible%20patients.)). Although researchers increasingly rely on electronic health records (EHRs) to support recruitment, determining whether a patient should be contacted still requires detailed manual review of unstructured EHR notes. This process is time-consuming, requires clinical judgement, and often incorporates not only formal contraindications but also operational 'skip signals', which affect whether initiating contact is appropriate. Because of this, chart review can occupy several hours of CRC time each day, slowing recruitment and adding substantial operational burden ([Etchberger, 2016](https://www.linkedin.com/pulse/chart-review-should-sponsors-pay-clinical-research-sites-etchberger#:~:text=Some%20trials%20remain%20very%20complicated,takes%20to%20find%20those%20patients.)). These challenges are particularly critical for milestone-driven NIH-funded projects, where delays in meeting recruitment goals can jeopardize continued funding. This project was motivated by an ongoing NIH-funded OSA clinical study in which our team has faced recruitment delays due to how resource-intensive the chart review process is for the CRCs.
+
+Addressing this problem requires collaboration with experts from different fields including medicine, informatics, and clinical research operations. Clinicians provide the judgement needed to determine which patients should be contacted, assist with recruitment within their own patient populations, and interpret the context of the notes and patient charts. Informatics and data science contribute the methods to extract, organize, and analyze unstructured EHR data to help more efficiently determine whether is it suitable to contact patients for recruit. In developing this project, conversations with Dr. Danielle Mowery, Director of the Institute for Biomedical Informatics (CIC), and Emily Schriver, a translational data scientist in the CIC, helped clarify how informatics can be applied to identify meaningful EHR features that support clinical teams in improving recruitment workflows. This problem is also closely tied to clinical research operations, since improving recruitment directly benefits those responsible for identifying, reaching out to, and enrolling participants.
+
+## Methods {#sec-methods}
+
+#### Methods Overview
+
+This project involved two methodological phrases.
+
+**Phase 1** focused on extracting note-level evidence related to the exclusion criteria through Large Language Model (LLM) prompt engineering applied to unstructured notes in the EHR using within a secure, HIPAA-compliant environment. This phase consisted of identifying the study population, note retrieval and de-identification, LLM prompt evaluation, and note-level classification for exclusion criteria.
+
+**Phase 2** used the de-identified output from Phase 1 to construct a patient-level dataset to identify which combinations of EHR note metadata (specialty, note type, encounter type, and temporal window), most effectively reveal clinically relevant contexts for identifying patients to contact and not to contact for recruitment by applying a logistic regression model in R. All R data for feature engineering and modeling are included in this report.
+
+#### PHASE 1 - LLM-Based Evidence Extraction 
+
+::: callout-important
+No R code is included for Phase 1 because this phrase involved protected health information (PHI) and was completed entirely within Penn Medicine's HIPAA-compliant environments (Databricks and the LPC cluster). All patient identification, note retrieval, de-identification and LLM processing were completed using SQL, Python, and R inside these secure workspaces.
+:::
+
+[**Study Population**]{.underline}
+
+Patients were identified from a CRC-maintained aggregated spreadsheet containing all individuals who had recent visits a Penn Medicine Sleep Center and were automatically and manually reviewed during screening for the NIH-funded OSA clinical trial. For this project, patients were included if:
+
+1.  They underwent manual chart review by the CRC, and
+2.  They were not recruited due to an exclusion classified as "Medical Condition" or "Other"
+
+From this group, the cohort were further restricted to patients with non-administrative exclusion signals that are most likely captured within unstructured clinical, pathology, and surgical notes (e.g. cancer, panic disorder, recent surgery, non-OSA sleep condition such as narcolepsy) which require extensive manual review.
+
+[**Data Sources and Note Retrieval**]{.underline}
+
+-   Notes Extract (clinical - 1 year, surgical and pathology - all time). Notes were pulled from Epic Clarity
+
+-   Note Metadata Collected - note type, encounter specialty, encounter type
+
+-   Temporal windows assigned for each note (this is needed for the prompt)
+
+-   Filtered out empty notes and filtered out sensitive notes based on HB criteria (briefly state these)
+
+-   Notes were extracted in Databricks, deidentified using PHIlter on the LPC cluster.
+
+[**Exclusion Category Bucketing**]{.underline}
+
+-   Exclusion reasons were consolidated into higher level exclusion buckets (clinical_contra, procedural_recent, sleep_related)
+
+-   Bucketing was designed because of sparsity of the individual exclusion signals
+
+-   Buckets were used to organize how the LLM identifies exclusion signals in the notes
+
+[**LLM Prompt Development, Evaluation, and Note-Level Output**]{.underline}
+
+-   Describe the purpose of the frozen prompt (then put the prompt below)
+
+-   Split the patients to 60% training and 40% testing while maintaining proportion of the higher exclusion buckets (based on first exclusion the CRC identified in the spreadsheet)
+
+-   Describe LLM Model Used (and maybe briefly describe that PHI is not being shared out)
+
+-   Evaluation: (1) How well did they identify the exclusion criteria identified by the CRC --\> the first she saw; (2) Manually spot-checked 10 patients and all of their notes.
+
+-   Revised until x was achieved then froze the prompt
+
+-   Then, the final prompt was applied to the rest of the notes (training again and testing)
+
+    -   Also talk about what the output looked like
+
+#### PHASE 2 - Regression Modeling and Feature Interpretation  
+
+[**Loading Required Packages**]{.underline}
+
+[**Loading the De-Identified Note-Level Dataset**]{.underline}
+
+[**Feature Engineering**]{.underline}
+
+-   Binary LLM bucket flags
+
+[**Aggregation to Construct the Analytical Modeling Dataset**]{.underline}
+
+-   Notes aggregated by patient ID
+
+-   Aggregations for glm
+
+[**Final Construction of Modeling Dataset**]{.underline}
+
+-   Merge in the CRC exclusion label
+
+-   Final Modeling Variables
+
+-   Ensure factors and numeric types are consistent
+
+[**Description of Statistical Modeling Approach**]{.underline}
+
+-   Describe Model
+
+-   Metrics (and say 'which are in the results section')
+
+Describe the data used and general methodological approach used to address the problem described in the @sec-introduction. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.
+
+## Results {#sec-results}
+
+Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the @sec-methods as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you'd like, but this is not required.
+
+## Conclusion
+
+This the conclusion. The @sec-results can be invoked here.
