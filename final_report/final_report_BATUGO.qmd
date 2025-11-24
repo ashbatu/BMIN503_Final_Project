@@ -1,21 +1,22 @@
 ---
 title: "Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals"
-subtitle: "BMIN503/EPID600 Final Project"
+subtitle: ""
 author: "Ashley Batugo"
-format: 
+date: today
+format:
   html:
-    theme: lumen
-    self-contained: true
-    embed-resources: true
-    df-print: paged
-editor: visual
-number-sections: true
-embed-resources: true
+    css: "osa-report-theme.css"
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    smooth-scroll: true
+    page-layout: full
+    anchor-sections: true
+include-in-header: |
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
 ---
 
-------------------------------------------------------------------------
-
-## Overview {#sec-overview}
+## Overview
 
 This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) study. CRCs rely on two categories of information found in unstructured EHR notes: true clinical contraindications such as active medical instability and operational skip signals including recent surgery, hospitalization or pending procedures. Using LLM extracted note-level evidence, I aggregated these signals into a patient-level dataset and applied logistic regression to identify which metadata features were most associated with both informal and formal exclusionary contexts. Discussions with Dr. Danielle Mowery and Emily Schriver helped shape the dataset design and modeling strategy and Paula Salvador, the CRC for this study, provided insights into the pre-screening process and the reasons behind choosing not to reach out to certain patients. The materials for this project can be found in this [Github repository](https://github.com/ashbatu/BMIN503_Final_Project).
 
@@ -35,10 +36,10 @@ This project involved two methodological phrases.
 
 **Phase 2** used the de-identified output from Phase 1 to construct a patient-level dataset to identify which combinations of EHR note metadata (specialty, note type, encounter type, and temporal window), most effectively reveal clinically relevant contexts for identifying patients to contact and not to contact for recruitment by applying a logistic regression model in R. All R data for feature engineering and modeling are included in this report.
 
-#### PHASE 1 - LLM-Based Evidence Extraction 
+#### PHASE 1 - LLM-Based Evidence Extraction
 
 ::: callout-important
-No R code is included for Phase 1 because this phrase involved protected health information (PHI) and was completed entirely within Penn Medicine's HIPAA-compliant environments (Databricks and the LPC cluster). All patient identification, note retrieval, de-identification and LLM processing were completed using SQL, Python, and R inside these secure workspaces.
+No functional code is included for Phase 1 because this phrase involved protected health information (PHI) and was completed entirely within Penn Medicine's HIPAA-compliant environments (Databricks and the LPC cluster). All patient identification, note retrieval, de-identification and LLM processing were completed using SQL, Python, and R inside these secure workspaces. Important code snippets used during this phase are included.
 :::
 
 [**Study Population**]{.underline}
@@ -50,27 +51,75 @@ Patients were identified from a CRC-maintained aggregated spreadsheet containing
 
 From this group, the cohort were further restricted to patients with non-administrative exclusion signals that are most likely captured within unstructured clinical, pathology, and surgical notes (e.g. cancer, panic disorder, recent surgery, non-OSA sleep condition such as narcolepsy) which require extensive manual review.
 
+\[SHOW CODE SNIPPET\]
+
 [**Data Sources and Note Retrieval**]{.underline}
 
--   Notes Extract (clinical - 1 year, surgical and pathology - all time). Notes were pulled from Epic Clarity
+Clinical notes were extracted from the Epic Clarity database on the Penn Medicine Azure Databricks environment. We included clinical notes (e.g. progress notes, discharge summaries, ED notes), and all surgical and pathology notes to capture both operational skip signals and true contraindications. Note-level metadata (note type, encounter specialty, and encounter type) were also retrieved. All notes within one year prior to the CRC's pre-screening date were included, and each note was assigned to one of four temporal windows (0--30, 31--90, 91--180, and \>180 days).
 
--   Note Metadata Collected - note type, encounter specialty, encounter type
+\[SHOW CODE FOR TEMPORAL WINDOWS\]
 
--   Temporal windows assigned for each note (this is needed for the prompt)
+Additionally, each note was prefixed with a standardized header indicating the temporal context of the note relative to the pre-screening date: `[TIME_RELATIVE_TO_PRESCREEN: <WINDOW_BIN> | DELTA_DAYS = <NUMBER>]`.
 
--   Filtered out empty notes and filtered out sensitive notes based on HB criteria (briefly state these)
+\[SHOW CODE FOR PREFIX\]
 
--   Notes were extracted in Databricks, deidentified using PHIlter on the LPC cluster.
+Empty notes and notes deemed sensitive by the Penn Medicine Privacy Office were removed.
+
+\[SHOE PYTHON CODE FOR REMOVING NA'S\]
+
+The remaining notes were then deidentified using an adapted PHIlter implementation on the LPC cluster.
 
 [**Exclusion Category Bucketing**]{.underline}
 
--   Exclusion reasons were consolidated into higher level exclusion buckets (clinical_contra, procedural_recent, sleep_related)
+Exclusion reasons were consolidated into higher level exclusion buckets due to the sparsity of the individual exclusion signals after reviewing the exclusion notes assigned by the CRC. The buckets were then used to organize how the LLM identified exclusion signals in the notes. Exclusions were grouped into the following three buckets
 
--   Bucketing was designed because of sparsity of the individual exclusion signals
+| Exclusion Bucket                                 | Description                                                                                                                                     |
+|--------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| Clinical Contraindications (`clinical_contra`)   | Major current clinical conditions that influence the decision to reach out to a patient because of medical instability of likely ineligibility. |
+| Procedural & Recent Events (`procedural_recent`) | Recent, ongoing, or upcoming procedures or clinical events that indicate current acute clinical episodes or need for recovery.                  |
+| Sleep-Specific Conditions (`sleep_specific`)     | Sleep-related diagnoses that indicate a patient has a non-OSA sleep disorder or condition.                                                      |
 
--   Buckets were used to organize how the LLM identifies exclusion signals in the notes
+\[SHOW CODE TO CONSOLIDATE EXCLUSIONS\]
 
 [**LLM Prompt Development, Evaluation, and Note-Level Output**]{.underline}
+
+The GPT-4o mini chat model available in the Penn Medicine Azure Databricks environment was used to evaluate each note and assign a 0/1 decision for each of the three exclusion categories. The prompt instructed the LLM to read each note (with its temporal prefix) and determine, for each category, whether the note contained information meeting that category's exclusion criteria (1 = meets criteria, 0 = does not), along with a brief rationale and a confidence score.
+
+The prompt consisted of the following components:
+
+-   a brief description of the LLM's role and the overall classification task,
+
+-   clarification of the temporal prefix added to each note,
+
+-   definitions and examples of the exclusion categories and the constraints for assigning a 1 or 0,
+
+-   the required output elements for each category: a binary assignment, a short rationale, and a confidence score, and
+
+-   the standardized output format.
+
+The full prompt sent to the LLM is included in the Appendix.
+
+Abridged Python and SQL code used in the Databricks environment were included below to illustrate how notes were submitted to the LLM and how resulting outputs were parsed for downstream use.
+
+The GPT-4o mini endpoint was invoked programatically and the LLM ran the prompt as shown below:
+
+\[INCLUDE FUNCTION TO CALL THE PROMPT\]
+
+An example of the formatted note input sent to the LLM is shown here (synthetic):
+
+\[SHOW EXAMPLE HERE -- SYNTHETIC VERSION\]
+
+The model returned a structured JSON response containing three sets of binary labels, rationales, and confidence scores. A representative synthetic JSON output is shown below:
+
+\[SHOW EXAMPLE HERE - SYNTHETIC VERSION -- JSON\]
+
+This JSON was then parsed into a dataframe for creating the analytical dataset:
+
+\[SHOW PYTHON CODE TO PARSE THE JSON\]
+
+To assess the quality of the prompt, patients were split in 60/40 training and testing sets while also maintaining the proportion of the rolled up exclusion buckets. The prompt was first applied to all notes for patients in the training set. Performance of the prompt was evaluated based on (1) how well the LLM identified the exclusion categories and (2) a manual review of 5 patients per category to ensure that the LLM-generated rationales aligned with the note text. Once ≥80% coverage was achieved, the prompt was frozen and then applied to the entire dataset (training and testing notes). Coverage was computed with the following code:
+
+\[CODE TO EVALUATE COVERAGE\]
 
 -   Describe the purpose of the frozen prompt (then put the prompt below)
 
@@ -86,7 +135,21 @@ From this group, the cohort were further restricted to patients with non-adminis
 
     -   Also talk about what the output looked like
 
-#### PHASE 2 - Regression Modeling and Feature Interpretation  
+TODO: In the code --\> include parts of the python code that i used to run extract the features using Sy's code (the code doesn't not need to run); also upload this code onto github and comment the parts that i had to change --\> figure out which parts are meaningful and maybe show a dummy of what the output looks like from the llm processing? like make tables
+
+-   Packages that were used for LLM
+
+-   Confidence Interval Code
+
+-   Potential code to include --\> LLMClassification Class
+
+-   LLM Parameters
+
+-   How the model was chosen (from list of endpoints)
+
+-   Outputting results --\> and what that output looked like (just show dummy as a markdown table)
+
+#### PHASE 2 - Regression Modeling and Feature Interpretation
 
 [**Loading Required Packages**]{.underline}
 
@@ -118,7 +181,25 @@ From this group, the cohort were further restricted to patients with non-adminis
 
 Describe the data used and general methodological approach used to address the problem described in the @sec-introduction. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.
 
+**TODO**
+
+-   Talk about data cleaning --\> grouping this was talked about in phrase 2
+
+-   Justify the predictor variables and the predicted variables
+
+-   Why did you pick the covariates --\> make sure that this is clearly explained --\> talk about the features specifically that are being used for the models
+
 ## Results {#sec-results}
+
+Odds Ratios -- show confidence intervals also
+
+Explain why your results our meaningful
+
+look at subgroup differences --\> does this apply?
+
+Correlation measures
+
+Meaningful visualizations --\> show the full though process to share that you're thinking about the data not just the results
 
 Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the @sec-methods as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you'd like, but this is not required.
 

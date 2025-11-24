@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.0.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Ashley Batugo">
+<meta name="dcterms.date" content="2025-11-24">
+
+<title>Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+<script src="final_report_BATUGO_files/libs/clipboard/clipboard.min.js"></script>
+<script src="final_report_BATUGO_files/libs/quarto-html/quarto.js"></script>
+<script src="final_report_BATUGO_files/libs/quarto-html/popper.min.js"></script>
+<script src="final_report_BATUGO_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="final_report_BATUGO_files/libs/quarto-html/anchor.min.js"></script>
+<link href="final_report_BATUGO_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="final_report_BATUGO_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="final_report_BATUGO_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="final_report_BATUGO_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="final_report_BATUGO_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<style>html{ scroll-behavior: smooth; }</style>
+
+
+<link rel="stylesheet" href="osa-report-theme.css">
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-full">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"> <span class="header-section-number">1</span> Overview</a></li>
+  <li><a href="#sec-introduction" id="toc-sec-introduction" class="nav-link" data-scroll-target="#sec-introduction"> <span class="header-section-number">2</span> Introduction</a></li>
+  <li><a href="#sec-methods" id="toc-sec-methods" class="nav-link" data-scroll-target="#sec-methods"> <span class="header-section-number">3</span> Methods</a></li>
+  <li><a href="#sec-results" id="toc-sec-results" class="nav-link" data-scroll-target="#sec-results"> <span class="header-section-number">4</span> Results</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"> <span class="header-section-number">5</span> Conclusion</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content column-page-left" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Ashley Batugo </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">November 24, 2025</p>
+    </div>
+  </div>
+    
+  </div>
+  
+
+</header>
+
+<section id="overview" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="overview"><span class="header-section-number">1</span> Overview</h2>
+<p>This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) study. CRCs rely on two categories of information found in unstructured EHR notes: true clinical contraindications such as active medical instability and operational skip signals including recent surgery, hospitalization or pending procedures. Using LLM extracted note-level evidence, I aggregated these signals into a patient-level dataset and applied logistic regression to identify which metadata features were most associated with both informal and formal exclusionary contexts. Discussions with Dr.&nbsp;Danielle Mowery and Emily Schriver helped shape the dataset design and modeling strategy and Paula Salvador, the CRC for this study, provided insights into the pre-screening process and the reasons behind choosing not to reach out to certain patients. The materials for this project can be found in this <a href="https://github.com/ashbatu/BMIN503_Final_Project">Github repository</a>.</p>
+</section>
+<section id="sec-introduction" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="sec-introduction"><span class="header-section-number">2</span> Introduction</h2>
+<p>Clinical research is essential for advancing medical knowledge, particularly for conditions that are often underrecognized and underdiagnosed, such as OSA (<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3096276/">Motamedi et al., 2009</a>). Similar to clinical trials, prospective clinical studies depend on many factors including strong study design, careful planning, timely recruitment, and sustained participation retention (<a href="https://journals.sagepub.com/doi/full/10.1177/1740774519829709?casa_token=mm71iIUcfGkAAAAA%3AvRwJV3xTHnNLQ2-WsNICmuzN-IQLbLRioaR-lmo3lrqEWKBfZ-WFaB21-bRNLq34dCeeWsCGKWi9Yg">Lai et al., 2019</a>). However, identifying eligible patients remains one of the major challenges in clinical research (<a href="https://acrjournals.onlinelibrary.wiley.com/doi/10.1002/acr2.11289#:~:text=The%20LiiRA%20study%20team%20incorporated,not%20screening%20out%20eligible%20patients.">Cai et al., 2021</a>). Although researchers increasingly rely on electronic health records (EHRs) to support recruitment, determining whether a patient should be contacted still requires detailed manual review of unstructured EHR notes. This process is time-consuming, requires clinical judgement, and often incorporates not only formal contraindications but also operational ‘skip signals’, which affect whether initiating contact is appropriate. Because of this, chart review can occupy several hours of CRC time each day, slowing recruitment and adding substantial operational burden (<a href="https://www.linkedin.com/pulse/chart-review-should-sponsors-pay-clinical-research-sites-etchberger#:~:text=Some%20trials%20remain%20very%20complicated,takes%20to%20find%20those%20patients.">Etchberger, 2016</a>). These challenges are particularly critical for milestone-driven NIH-funded projects, where delays in meeting recruitment goals can jeopardize continued funding. This project was motivated by an ongoing NIH-funded OSA clinical study in which our team has faced recruitment delays due to how resource-intensive the chart review process is for the CRCs.</p>
+<p>Addressing this problem requires collaboration with experts from different fields including medicine, informatics, and clinical research operations. Clinicians provide the judgement needed to determine which patients should be contacted, assist with recruitment within their own patient populations, and interpret the context of the notes and patient charts. Informatics and data science contribute the methods to extract, organize, and analyze unstructured EHR data to help more efficiently determine whether is it suitable to contact patients for recruit. In developing this project, conversations with Dr.&nbsp;Danielle Mowery, Director of the Institute for Biomedical Informatics (CIC), and Emily Schriver, a translational data scientist in the CIC, helped clarify how informatics can be applied to identify meaningful EHR features that support clinical teams in improving recruitment workflows. This problem is also closely tied to clinical research operations, since improving recruitment directly benefits those responsible for identifying, reaching out to, and enrolling participants.</p>
+</section>
+<section id="sec-methods" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="sec-methods"><span class="header-section-number">3</span> Methods</h2>
+<section id="methods-overview" class="level4" data-number="3.0.1">
+<h4 data-number="3.0.1" class="anchored" data-anchor-id="methods-overview"><span class="header-section-number">3.0.1</span> Methods Overview</h4>
+<p>This project involved two methodological phrases.</p>
+<p><strong>Phase 1</strong> focused on extracting note-level evidence related to the exclusion criteria through Large Language Model (LLM) prompt engineering applied to unstructured notes in the EHR using within a secure, HIPAA-compliant environment. This phase consisted of identifying the study population, note retrieval and de-identification, LLM prompt evaluation, and note-level classification for exclusion criteria.</p>
+<p><strong>Phase 2</strong> used the de-identified output from Phase 1 to construct a patient-level dataset to identify which combinations of EHR note metadata (specialty, note type, encounter type, and temporal window), most effectively reveal clinically relevant contexts for identifying patients to contact and not to contact for recruitment by applying a logistic regression model in R. All R data for feature engineering and modeling are included in this report.</p>
+</section>
+<section id="phase-1---llm-based-evidence-extraction" class="level4" data-number="3.0.2">
+<h4 data-number="3.0.2" class="anchored" data-anchor-id="phase-1---llm-based-evidence-extraction"><span class="header-section-number">3.0.2</span> PHASE 1 - LLM-Based Evidence Extraction</h4>
+<div class="callout-important callout callout-style-default callout-captioned">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-caption-container flex-fill">
+Important
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>No functional code is included for Phase 1 because this phrase involved protected health information (PHI) and was completed entirely within Penn Medicine’s HIPAA-compliant environments (Databricks and the LPC cluster). All patient identification, note retrieval, de-identification and LLM processing were completed using SQL, Python, and R inside these secure workspaces. Important code snippets used during this phase are included.</p>
+</div>
+</div>
+<p><u><strong>Study Population</strong></u></p>
+<p>Patients were identified from a CRC-maintained aggregated spreadsheet containing all individuals who had recent visits a Penn Medicine Sleep Center and were automatically and manually reviewed during screening for the NIH-funded OSA clinical trial. For this project, patients were included if:</p>
+<ol type="1">
+<li>They underwent manual chart review by the CRC, and</li>
+<li>They were not recruited due to an exclusion classified as “Medical Condition” or “Other”</li>
+</ol>
+<p>From this group, the cohort were further restricted to patients with non-administrative exclusion signals that are most likely captured within unstructured clinical, pathology, and surgical notes (e.g.&nbsp;cancer, panic disorder, recent surgery, non-OSA sleep condition such as narcolepsy) which require extensive manual review.</p>
+<p>[SHOW CODE SNIPPET]</p>
+<p><u><strong>Data Sources and Note Retrieval</strong></u></p>
+<p>Clinical notes were extracted from the Epic Clarity database on the Penn Medicine Azure Databricks environment. We included clinical notes (e.g.&nbsp;progress notes, discharge summaries, ED notes), and all surgical and pathology notes to capture both operational skip signals and true contraindications. Note-level metadata (note type, encounter specialty, and encounter type) were also retrieved. All notes within one year prior to the CRC’s pre-screening date were included, and each note was assigned to one of four temporal windows (0–30, 31–90, 91–180, and &gt;180 days).</p>
+<p>[SHOW CODE FOR TEMPORAL WINDOWS]</p>
+<p>Additionally, each note was prefixed with a standardized header indicating the temporal context of the note relative to the pre-screening date: <code>[TIME_RELATIVE_TO_PRESCREEN: &lt;WINDOW_BIN&gt; | DELTA_DAYS = &lt;NUMBER&gt;]</code>.</p>
+<p>[SHOW CODE FOR PREFIX]</p>
+<p>Empty notes and notes deemed sensitive by the Penn Medicine Privacy Office were removed.</p>
+<p>[SHOE PYTHON CODE FOR REMOVING NA’S]</p>
+<p>The remaining notes were then deidentified using an adapted PHIlter implementation on the LPC cluster.</p>
+<p><u><strong>Exclusion Category Bucketing</strong></u></p>
+<p>Exclusion reasons were consolidated into higher level exclusion buckets due to the sparsity of the individual exclusion signals after reviewing the exclusion notes assigned by the CRC. The buckets were then used to organize how the LLM identified exclusion signals in the notes. Exclusions were grouped into the following three buckets</p>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 74%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Exclusion Bucket</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Clinical Contraindications (<code>clinical_contra</code>)</td>
+<td>Major current clinical conditions that influence the decision to reach out to a patient because of medical instability of likely ineligibility.</td>
+</tr>
+<tr class="even">
+<td>Procedural &amp; Recent Events (<code>procedural_recent</code>)</td>
+<td>Recent, ongoing, or upcoming procedures or clinical events that indicate current acute clinical episodes or need for recovery.</td>
+</tr>
+<tr class="odd">
+<td>Sleep-Specific Conditions (<code>sleep_specific</code>)</td>
+<td>Sleep-related diagnoses that indicate a patient has a non-OSA sleep disorder or condition.</td>
+</tr>
+</tbody>
+</table>
+<p>[SHOW CODE TO CONSOLIDATE EXCLUSIONS]</p>
+<p><u><strong>LLM Prompt Development, Evaluation, and Note-Level Output</strong></u></p>
+<p>The GPT-4o mini chat model available in the Penn Medicine Azure Databricks environment was used to evaluate each note and assign a 0/1 decision for each of the three exclusion categories. The prompt instructed the LLM to read each note (with its temporal prefix) and determine, for each category, whether the note contained information meeting that category’s exclusion criteria (1 = meets criteria, 0 = does not), along with a brief rationale and a confidence score.</p>
+<p>The prompt consisted of the following components:</p>
+<ul>
+<li><p>a brief description of the LLM’s role and the overall classification task,</p></li>
+<li><p>clarification of the temporal prefix added to each note,</p></li>
+<li><p>definitions and examples of the exclusion categories and the constraints for assigning a 1 or 0,</p></li>
+<li><p>the required output elements for each category: a binary assignment, a short rationale, and a confidence score, and</p></li>
+<li><p>the standardized output format.</p></li>
+</ul>
+<p>The full prompt sent to the LLM is included in the Appendix.</p>
+<p>Abridged Python and SQL code used in the Databricks environment were included below to illustrate how notes were submitted to the LLM and how resulting outputs were parsed for downstream use.</p>
+<p>The GPT-4o mini endpoint was invoked programatically and the LLM ran the prompt as shown below:</p>
+<p>[INCLUDE FUNCTION TO CALL THE PROMPT]</p>
+<p>An example of the formatted note input sent to the LLM is shown here (synthetic):</p>
+<p>[SHOW EXAMPLE HERE – SYNTHETIC VERSION]</p>
+<p>The model returned a structured JSON response containing three sets of binary labels, rationales, and confidence scores. A representative synthetic JSON output is shown below:</p>
+<p>[SHOW EXAMPLE HERE - SYNTHETIC VERSION – JSON]</p>
+<p>This JSON was then parsed into a dataframe for creating the analytical dataset:</p>
+<p>[SHOW PYTHON CODE TO PARSE THE JSON]</p>
+<p>To assess the quality of the prompt, patients were split in 60/40 training and testing sets while also maintaining the proportion of the rolled up exclusion buckets. The prompt was first applied to all notes for patients in the training set. Performance of the prompt was evaluated based on (1) how well the LLM identified the exclusion categories and (2) a manual review of 5 patients per category to ensure that the LLM-generated rationales aligned with the note text. Once ≥80% coverage was achieved, the prompt was frozen and then applied to the entire dataset (training and testing notes). Coverage was computed with the following code:</p>
+<p>[CODE TO EVALUATE COVERAGE]</p>
+<ul>
+<li><p>Describe the purpose of the frozen prompt (then put the prompt below)</p></li>
+<li><p>Split the patients to 60% training and 40% testing while maintaining proportion of the higher exclusion buckets (based on first exclusion the CRC identified in the spreadsheet)</p></li>
+<li><p>Describe LLM Model Used (and maybe briefly describe that PHI is not being shared out)</p></li>
+<li><p>Evaluation: (1) How well did they identify the exclusion criteria identified by the CRC –&gt; the first she saw; (2) Manually spot-checked 10 patients and all of their notes.</p></li>
+<li><p>Revised until x was achieved then froze the prompt</p></li>
+<li><p>Then, the final prompt was applied to the rest of the notes (training again and testing)</p>
+<ul>
+<li>Also talk about what the output looked like</li>
+</ul></li>
+</ul>
+<p>TODO: In the code –&gt; include parts of the python code that i used to run extract the features using Sy’s code (the code doesn’t not need to run); also upload this code onto github and comment the parts that i had to change –&gt; figure out which parts are meaningful and maybe show a dummy of what the output looks like from the llm processing? like make tables</p>
+<ul>
+<li><p>Packages that were used for LLM</p></li>
+<li><p>Confidence Interval Code</p></li>
+<li><p>Potential code to include –&gt; LLMClassification Class</p></li>
+<li><p>LLM Parameters</p></li>
+<li><p>How the model was chosen (from list of endpoints)</p></li>
+<li><p>Outputting results –&gt; and what that output looked like (just show dummy as a markdown table)</p></li>
+</ul>
+</section>
+<section id="phase-2---regression-modeling-and-feature-interpretation" class="level4" data-number="3.0.3">
+<h4 data-number="3.0.3" class="anchored" data-anchor-id="phase-2---regression-modeling-and-feature-interpretation"><span class="header-section-number">3.0.3</span> PHASE 2 - Regression Modeling and Feature Interpretation</h4>
+<p><u><strong>Loading Required Packages</strong></u></p>
+<p><u><strong>Loading the De-Identified Note-Level Dataset</strong></u></p>
+<p><u><strong>Feature Engineering</strong></u></p>
+<ul>
+<li>Binary LLM bucket flags</li>
+</ul>
+<p><u><strong>Aggregation to Construct the Analytical Modeling Dataset</strong></u></p>
+<ul>
+<li><p>Notes aggregated by patient ID</p></li>
+<li><p>Aggregations for glm</p></li>
+</ul>
+<p><u><strong>Final Construction of Modeling Dataset</strong></u></p>
+<ul>
+<li><p>Merge in the CRC exclusion label</p></li>
+<li><p>Final Modeling Variables</p></li>
+<li><p>Ensure factors and numeric types are consistent</p></li>
+</ul>
+<p><u><strong>Description of Statistical Modeling Approach</strong></u></p>
+<ul>
+<li><p>Describe Model</p></li>
+<li><p>Metrics (and say ‘which are in the results section’)</p></li>
+</ul>
+<p>Describe the data used and general methodological approach used to address the problem described in the <a href="#sec-introduction">Section&nbsp;2</a>. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.</p>
+<p><strong>TODO</strong></p>
+<ul>
+<li><p>Talk about data cleaning –&gt; grouping this was talked about in phrase 2</p></li>
+<li><p>Justify the predictor variables and the predicted variables</p></li>
+<li><p>Why did you pick the covariates –&gt; make sure that this is clearly explained –&gt; talk about the features specifically that are being used for the models</p></li>
+</ul>
+</section>
+</section>
+<section id="sec-results" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="sec-results"><span class="header-section-number">4</span> Results</h2>
+<p>Odds Ratios – show confidence intervals also</p>
+<p>Explain why your results our meaningful</p>
+<p>look at subgroup differences –&gt; does this apply?</p>
+<p>Correlation measures</p>
+<p>Meaningful visualizations –&gt; show the full though process to share that you’re thinking about the data not just the results</p>
+<p>Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the <a href="#sec-methods">Section&nbsp;3</a> as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you’d like, but this is not required.</p>
+</section>
+<section id="conclusion" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">5</span> Conclusion</h2>
+<p>This the conclusion. The <a href="#sec-results">Section&nbsp;4</a> can be invoked here.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    setTimeout(function() {
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+<script src="final_report_BATUGO_files/libs/quarto-html/zenscroll-min.js"></script>
+</body></html>
