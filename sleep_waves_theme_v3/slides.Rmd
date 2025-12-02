@@ -1,0 +1,412 @@
+---
+title: ""
+output:
+  xaringan::moon_reader:
+    css: ["default", "default-fonts", "css/sleep-waves.css", "css/type-scale.css"]
+    seal: false
+    lib_dir: libs
+    nature:
+      ratio: "16:9"
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringanExtra, echo=FALSE}
+xaringanExtra::use_panelset()
+```
+
+
+class: title-slide
+
+<div class="title-card">
+  <h1>
+    Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals
+  </h1>
+
+  <p class="small-title-meta">
+    Ashley Batugo · University of Pennsylvania · December 4, 2025
+  </p>
+</div>
+
+---
+
+# Problem & Motivation
+
+.pull-left[
+
+### Clinical Reality
+
+- Recruitment is a major bottleneck  
+- EHR notes hold critical details  
+- CRC decisions rely on:
+  - Formal exclusions  
+  - Informal skip signals  
+- Chart review is time-intensive 
+
+*Motivated by recruitment challenges in an NIH-funded OSA clinical study*
+
+]
+
+.pull-right[
+
+### Informatics Opportunity
+
+- Use LLMs to extract exclusion context  
+- Identify high-yield notes  
+- Learn which metadata matter  
+- Reduce unnecessary chart review  
+- Support CRC workflows with explainable modeling
+]
+
+---
+
+class: section-slide
+
+# Central Project Question  
+## Which note-level metadata and contextual features are most strongly associated with CRC exclusion decision during screening in an NIH-funded OSA Study?
+
+---
+
+# Study Cohort / Data Scope
+
+- CRC-maintained sleep clinic list
+- Only patients already excluded by CRC:
+  - Medical condition  
+  - Procedural / sleep-related reasons  
+- Unit of analysis: clinical notes  
+
+- Notes included:
+  - Clinical documentation (≤ 1 year before pre-screening)  
+  - Surgical notes (all time)  
+  - Pathology reports (all time)
+
+
+---
+
+class: llm-slide
+
+# Phase 1 — LLM-Based Evidence Extraction
+
+.panelset[
+
+.panel[.panel-name[Objective]
+
+- Took **de-identified notes + metadata**
+- Added a simple time prefix (0–30, 31–90, 91–180, >180 days)
+- Sent each note to **GPT-4o mini** 
+- Got back, per note:
+  - 3 exclusion flags (0/1) for clinical contraindications, recent procedural events, and sleep-specific exclusions
+  - Short rationale
+  - Confidence scores
+- Final Result: JSON → pandas dataframe → outputted as table in Databricks → joined with metadata → modeling dataset
+
+]
+
+.panel[.panel-name[Sample Input]
+
+```text
+[TIME_RELATIVE_TO_PRESCREEN: 0-30d | DELTA_DAYS = 12]
+
+NAME reports worsening daytime fatigue and loud snoring.
+History of recent surgery for nasal obstruction.
+```
+
+Each note included:
+- A standardized temporal header  
+- De-identified clinical text
+
+]
+
+.panel[.panel-name[Prompt Snapshot]
+
+```text
+Role: OSA screening assistant
+
+Input: one note + time header
+
+Task: Is there CURRENT evidence of:
+  1) Clinical contraindication
+  2) Procedural / recent event
+  3) Sleep-specific exclusion
+
+Rules:
+- Use explicit text only
+- Respect temporal context
+- Do not infer missing information
+
+Output: JSON with labels, rationale, confidence
+```
+]
+
+.panel[.panel-name[Code Snapshot]
+
+~~~python
+config = LLMClassificationConfig.for_inference(
+  text_column="note_text",
+  target_labels=[
+    "clinical_contra",
+    "procedural_recent",
+    "sleep_specific"
+  ]
+)
+
+predictor = LLMClassificationPredictor(
+  config=config,
+  client=client,
+  system_prompt=system_prompt,
+  task_prompt=prompt_text,
+  endpoint="openai-gpt-4o-mini-chat",
+  temperature=0.0
+)
+
+results = predictor.predict_batch(all_notes_final)
+~~~
+
+Executed in HIPAA-compliant Databricks.
+
+]
+
+.panel[.panel-name[Validation]
+
+- **Patient-level coverage**  
+  - For each exclusion bucket, checked whether  
+    ≥ 1 note flagged the patient correctly  
+
+- **Manual review**  
+  - 5 patients per category  
+  - Confirmed LLM rationales matched the note text  
+
+- **Prompt frozen** after:  
+  - ≥ 80% patient-level coverage in each bucket 
+
+]
+
+]
+---
+
+# Prompt Performance
+
+.pull-left[
+
+- Clinical contraindications  
+  - Coverage: **98.7 percent**
+
+- Procedural / recent care  
+  - Coverage: **94.6 percent**
+
+- Sleep-specific  
+  - Coverage: **95.2 percent**
+
+]
+
+.pull-right[
+
+> All categories exceeded the predefined  
+> threshold of 80 percent coverage,  
+> so the prompt was frozen and applied  
+> to the full cohort.
+
+]
+
+---
+
+# Phase 2 — Modeling & Interpretation
+
+.panelset[
+
+.panel[.panel-name[Objective]
+
+Translate LLM outputs and note metadata into:
+
+- Interpretable statistical models  
+- Quantified screening signals   
+- Goal: Identify which notes matter most and when they matter.
+
+]
+
+.panel[.panel-name[Outcomes]
+
+.pull-left[
+Three binary outcomes per note:
+
+1. **Overall exclusion**  
+   (any exclusion signal present)
+
+2. **Clinical exclusion**  
+   (true medical contraindications)
+
+3. **Other exclusion**  
+   (procedural or sleep-related)
+]
+
+.pull-right[ 
+Each model answers:
+> "What metadata context signals exclusion?"
+]
+
+]
+
+.panel[.panel-name[Predictors]
+
+Structured metadata inputs:
+
+- Note type  
+- Clinical specialty  
+- Encounter type  
+- Time window before screening  
+  (0–30, 31–90, 91–180, >180 days)
+
+All predictors were converted to categorical factors.
+
+
+]
+
+.panel[.panel-name[Design Decisions]
+
+.pull-left[
+Feature engineering:
+
+- Sparse groups collapsed  
+- Missing values → `"Unknown"`  
+- Overlapping note-type fields harmonized  
+
+Imbalance handling:
+
+- Inverse class weighting for:
+  - Clinical model  
+  - Other model  
+]
+
+ .pull-right[
+ Model fitting:
+
+- Fit on entire dataset (because this is inferential modeling)
+- Maximize statistical power for signal discovery
+]
+
+]
+
+.panel[.panel-name[Method]
+
+.pull-left[
+Modeling approach:
+
+- Multivariable Logistic regression (`glm()`)
+- Odds ratios as effect sizes  
+- Direction of influence emphasized  
+
+Validation:
+
+- Bootstrapped models  
+- Checked:
+  - Directional stability  
+  - Signal robustness
+]
+  
+.pull-right[
+
+Model Function:
+
+- ```glm(outcome ~ Note Type + Clinical specialty + Encounter Type + Time from Pre-Screening)```
+]
+
+]
+
+]
+---
+
+# Results: Cohort & Notes Landscape
+
+.panelset[
+
+.panel[.panel-name[Cohort Summary]
+
+### Study Cohort
+
+- **2,911** de-identified notes  
+- **164** screened patients  
+- Median notes per patient: **11** (range: 1–99)  
+- Note date range: **Sep 2011 – Nov 2025**  
+
+]
+
+.panel[.panel-name[Documentation Shape]
+
+.pull-left[
+![](../figs/note_type_plot.png)
+]
+
+.pull-right[
+![](../figs/time_windows_plot.png)
+]
+
+]
+
+.panel[.panel-name[Care Context]
+
+.pull-left[
+![](../figs/specialties_plot.png)
+]
+
+.pull-right[
+![](../figs/encounter_type_plots.png)
+]
+
+]
+
+]
+---
+
+# Results — Which metadata signals exclusion?
+
+.panelset[
+
+.panel[.panel-name[Main Result]
+
+![](../figs/overall_model_odds_plot.png)
+
+**What this shows**
+- Odds > 1 = higher chance the note contains exclusion
+- Bars = 95% confidence intervals for odds ratio
+- Encounter Type and Temporal Proximity from Screening are the strongest predictors
+- Specialty matters, but less precise 
+- Note type is the weakest signal
+
+]
+
+.panel[.panel-name[Stability through Boostrapping]
+
+![](../figs/overall_model_bootstrap_plot.png)
+
+**What this shows**
+- Most terms maintain directionality despite effect size variability.
+- Encounter type and time window are most stable
+- Note type and specialty are more variable in strength more than direction
+- No predictors behave randomly (50% change in direction through resampling)
+
+]
+
+]
+
+---
+
+### Interpretation (one take-home message)
+
+> Exclusion signals are driven more by *when* and *where* care occurred than by document labels alone.
+
+### Consistency across models (spoken, not plotted)
+
+- **Clinical model:** specialty and encounter dominate  
+- **Other model:** timing and hospital context dominate  
+- **Overall model:** blends both patterns
+
+---
+
+class: end-slide, middle
+
+# Thanks!
+
+.small[
+Questions or comments?
+]
