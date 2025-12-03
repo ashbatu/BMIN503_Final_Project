@@ -117,3 +117,9 @@ li {
 .interpretation p {
   margin-bottom: 0.3em;
 }
+
+/* for conclusion */
+.small-text-slide {
+  font-size: 1.1em;
+  line-height: 1.3;
+}

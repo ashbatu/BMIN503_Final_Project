@@ -113,10 +113,18 @@ img {
   z-index: -1;
 }
 
+.title-slide,
+.section-slide {
+  background-image: url("../img/ehr-watercolor-signals.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 /* -------- Glass Title Card -------- */
 .title-card {
   position: absolute;
-  top: 12%;
+  top: 25%;
   left: 50%;
   transform: translateX(-50%);
   width: 70%;
@@ -211,4 +219,28 @@ img {
 
 .rounded {
   border-radius: 16px;
+}
+
+/* section card */
+.section-card {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2.5rem 3rem;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 1.75rem;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
+}
+
+.section-card h1 {
+  font-size: 3rem;          /* a bit smaller than the title */
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #0f172a;           /* same dark text as title */
+}
+
+.section-subtitle {
+  font-size: 1.35rem;
+  line-height: 1.5;
+  color: #1f2933;
+  margin: 0;
 }
