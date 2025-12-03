@@ -747,15 +747,47 @@ overall_model_odds_plot <- glm_overall %>%
     axis.title.x = element_text(face = "bold"),
     plot.title = element_text(size = 13, face = "bold")
   )
+overall_model_odds_plot
+```
+```{r}
+##### for slides 
+# pick strongest 12 predictors
+p_overall <- glm_overall %>%
+  mutate(term = fct_reorder(term, odds_ratio)) %>%
+  ggplot(aes(x = term, y = odds_ratio)) +
+  geom_errorbar(
+    aes(ymin = ci_min, ymax = ci_max),
+    width = 0.2,
+    size  = 0.6
+  ) +
+  geom_point(size = 1.8, color = osa_palette[1]) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  scale_y_log10(
+    breaks = scales::log_breaks(n = 10),
+    labels = scales::label_number()
+  ) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Odds ratio",
+    title = "Top metadata predictors for any exclusion signal"
+  ) +
+  theme_osa(base_size = 11) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    plot.title = element_text(size = 11, face = "bold")
+  )
 
 ggsave(
-  filename = "../figs/overall_model_odds_plot.png",
-  width = 12,
-  height = 8,
-  dpi = 300,
-  bg = "white"
+  "../figs/overall_model_odds_plot.png",
+  p_overall,
+  width = 8,      # inches
+  height = 5,   # make it taller
+  dpi = 320
 )
 ```
+
 
 ```{r}
 # table view of of odds ratio, 95% CI, p_value < 0.05
@@ -861,11 +893,12 @@ overall_model_bootstrap_plot <- summary_overall_boot_results %>%
     subtitle = "Points = median OR, bars = bootstrap IQR",
     color = "Direction Stability (%)"
   ) +
-  theme_osa(base_size = 10) +
+  theme_osa(base_size = 7) +
   theme(
     axis.text.x = element_text(angle = 0, hjust = 0.5),
     axis.title.x = element_text(face = "bold"),
-    plot.title = element_text(size = 13, face = "bold")
+    plot.title = element_text(size = 13, face = "bold"),
+    axis.text.y = element_text(size = 6)
   ) +
   scale_color_gradientn(
     colors = c(
@@ -876,9 +909,9 @@ overall_model_bootstrap_plot <- summary_overall_boot_results %>%
 
 ggsave(
   filename = "../figs/overall_model_bootstrap_plot.png",
-  width = 12,
-  height = 8,
-  dpi = 300,
+  width = 7.5,
+  height = 3.5,
+  dpi = 220,
   bg = "white"
 )
 ```
@@ -1172,6 +1205,55 @@ summary_overall_boot_results %>%
     )
   )
 ```
+
+```{r}
+### for slides
+p_boot <- summary_overall_boot_results %>%
+  # drop intercept and any weird terms
+  filter(!feature %in% c("(Intercept)", "specialtyPathology")) %>%
+  # order by stability
+  arrange(desc(posneg_sign_pct)) %>%
+  slice(1:12) %>%                        # top 12 by directional stability
+  mutate(term = fct_reorder(feature, median_OR)) %>%
+  ggplot(aes(x = term, y = median_OR, color = posneg_sign_pct)) +
+  geom_errorbar(
+    aes(ymin = IQR_low, ymax = IQR_high),
+    width = 0.2,
+    size  = 0.6
+  ) +
+  geom_point(size = 1.8) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  scale_y_log10(
+    breaks = scales::log_breaks(n = 10),
+    labels = scales::label_number()
+  ) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Median odds ratio",
+    title = "Stability of effects across resampling (any exclusion model)",
+    color = "Direction stability (%)"
+  ) +
+  theme_osa(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 11, face = "bold")
+  ) + 
+  # making sure the min and max color is maintained
+  scale_color_gradientn(
+  colors = c("#7FCDBB", "#2C7FB8"),
+  limits = c(50, 100)
+)
+
+ggsave(
+  "../figs/overall_model_bootstrap_plot.png",
+  p_boot,
+  width = 8,     # same as odds plot
+  height = 5,    # taller = more readable y labels
+  dpi = 320
+)
+```
+
 
 ```{r}
 summary_overall_boot_results %>% 
