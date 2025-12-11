@@ -17,10 +17,6 @@ This project examined which note-level contextual and metadata features are asso
     - **final_report_BATUGO.qmd**: qmd file of the report
     - **osa-report-theme.css**: css styling for the project report
     
-    
-
-
-
-########## Contact: ashley[dot]batugo[at]pennmedicine[dot]upenn[dot]edu
+## Email: ashley[dot]batugo[at]pennmedicine[dot]upenn[dot]edu
 
 
