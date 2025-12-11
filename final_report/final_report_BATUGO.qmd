@@ -2,10 +2,12 @@
 title: "Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals"
 subtitle: ""
 author: "Ashley Batugo"
-date: today
+date: "December 12, 2025"
 format:
   html:
     df-print: paged
+    self-contained: true
+    embed-resources: true
     css: "osa-report-theme.css"
     toc: true
     toc-depth: 3
@@ -13,46 +15,48 @@ format:
     smooth-scroll: true
     page-layout: full
     anchor-sections: true
+embed-resources: true
 include-in-header: |
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
 ---
 
 ## Overview
 
-This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) study. CRCs rely on two categories of information found in unstructured EHR notes: true clinical contraindications such as active medical instability, and operational skip signals including recent surgery, hospitalization or pending procedures. Using LLM extracted note-level evidence, I constructed a de-identified, note level analytic dataset and used logistic regression as an exploratory modeling approach to identify which metadata features were most associated with both informal and formal exclusionary contexts. Discussions with Dr. Danielle Mowery and Emily Schriver helped shape the dataset design and modeling strategy and Paula Salvador, the CRC for this study, provided insights into the pre-screening process and the reasons behind choosing not to reach out to certain patients. The materials for this project can be found in this [Github repository](https://github.com/ashbatu/BMIN503_Final_Project).
+This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) study. CRCs rely on two categories of information found in unstructured Electronic Health Record (EHR) notes: true clinical contraindications such as active medical instability, and operational skip signals including recent surgery, hospitalization, or pending procedures. Using LLM extracted note-level evidence, I constructed a de-identified, note level analytic dataset and used multivariable logistic regression as an exploratory modeling approach to identify which metadata features were most associated with both informal and formal exclusionary contexts. Discussions with Dr. Danielle Mowery and Emily Schriver helped shape the dataset design and modeling strategy and Paula Salvador, the lead CRC for this study, provided insights into the pre-screening process and the reasons behind choosing not to reach out to certain patients. The materials for this project can be found in this [Github repository](https://github.com/ashbatu/BMIN503_Final_Project).
 
 ## Introduction {#sec-introduction}
 
-Clinical research is essential for advancing medical knowledge, particularly for conditions that are often underrecognized and underdiagnosed, such as OSA ([Motamedi et al., 2009](https://pmc.ncbi.nlm.nih.gov/articles/PMC3096276/)). Similar to clinical trials, prospective clinical studies depend on many factors including strong study design, careful planning, timely recruitment, and sustained participation retention ([Lai et al., 2019](https://journals.sagepub.com/doi/full/10.1177/1740774519829709?casa_token=mm71iIUcfGkAAAAA%3AvRwJV3xTHnNLQ2-WsNICmuzN-IQLbLRioaR-lmo3lrqEWKBfZ-WFaB21-bRNLq34dCeeWsCGKWi9Yg)). However, identifying eligible patients remains one of the major challenges in clinical research ([Cai et al., 2021](https://acrjournals.onlinelibrary.wiley.com/doi/10.1002/acr2.11289#:~:text=The%20LiiRA%20study%20team%20incorporated,not%20screening%20out%20eligible%20patients.)). Although researchers increasingly rely on electronic health records (EHRs) to support recruitment, determining whether a patient should be contacted still requires detailed manual review of unstructured EHR notes. This process is time-consuming, requires clinical judgement, and often incorporates not only formal contraindications but also operational 'skip signals', which affect whether initiating contact is appropriate. Because of this, chart review can occupy several hours of CRC time each day, slowing recruitment and adding substantial operational burden ([Etchberger, 2016](https://www.linkedin.com/pulse/chart-review-should-sponsors-pay-clinical-research-sites-etchberger#:~:text=Some%20trials%20remain%20very%20complicated,takes%20to%20find%20those%20patients.)). These challenges are particularly critical for milestone-driven NIH-funded projects, where delays in meeting recruitment goals can jeopardize continued funding. This project was motivated by an ongoing NIH-funded OSA clinical study in which our team has faced recruitment delays due to how resource-intensive the chart review process is for the CRCs.
+Clinical research is essential for advancing medical knowledge, particularly for conditions that are often underrecognized and underdiagnosed, such as OSA ([Motamedi et al., 2009](https://pmc.ncbi.nlm.nih.gov/articles/PMC3096276/)). Similar to clinical trials, prospective clinical studies depend on many factors including strong study design, careful planning, timely recruitment, and sustained participation retention ([Lai et al., 2019](https://journals.sagepub.com/doi/full/10.1177/1740774519829709?casa_token=mm71iIUcfGkAAAAA%3AvRwJV3xTHnNLQ2-WsNICmuzN-IQLbLRioaR-lmo3lrqEWKBfZ-WFaB21-bRNLq34dCeeWsCGKWi9Yg)). However, identifying eligible patients remains one of the major challenges in clinical research ([Cai et al., 2021](https://acrjournals.onlinelibrary.wiley.com/doi/10.1002/acr2.11289#:~:text=The%20LiiRA%20study%20team%20incorporated,not%20screening%20out%20eligible%20patients.)). Although researchers increasingly rely on EHRs to support recruitment, determining whether a patient should be contacted still requires detailed manual review of unstructured EHR notes. This process is time-consuming, requires clinical judgement, and often incorporates not only formal contraindications but also operational 'skip signals', which affect whether initiating contact is appropriate. Because of this, chart review can occupy several hours of CRC time each day, slowing recruitment and adding substantial operational burden ([Etchberger, 2016](https://www.linkedin.com/pulse/chart-review-should-sponsors-pay-clinical-research-sites-etchberger#:~:text=Some%20trials%20remain%20very%20complicated,takes%20to%20find%20those%20patients.)). These challenges are particularly critical for milestone-driven NIH-funded projects, where delays in meeting recruitment goals can jeopardize continued funding. This project was motivated by an ongoing NIH-funded OSA clinical study in which our team has faced recruitment delays due to how resource-intensive the chart review process is for the CRCs.
 
-Addressing this problem requires collaboration with experts from different fields including medicine, informatics, and clinical research operations. Clinicians provide the judgement needed to determine which patients should be contacted, assist with recruitment within their own patient populations, and interpret the context of the notes and patient charts. Informatics and data science contribute the methods to extract, organize, and analyze unstructured EHR data to help more efficiently determine whether is it suitable to contact patients for recruit. In developing this project, conversations with Dr. Danielle Mowery, Director of the Institute for Biomedical Informatics (CIC), and Emily Schriver, a translational data scientist in the CIC, helped clarify how informatics can be applied to identify meaningful EHR features that support clinical teams in improving recruitment workflows. This problem is also closely tied to clinical research operations, since improving recruitment directly benefits those responsible for identifying, reaching out to, and enrolling participants.
+Addressing this problem requires collaboration with experts from different fields including medicine, informatics, and clinical research operations. Clinicians provide the judgement needed to determine which patients should be contacted, assist with recruitment within their own patient populations, and interpret the context of the notes and patient charts. Informatics and data science contribute the methods to extract, organize, and analyze unstructured EHR data to help more efficiently determine whether is it suitable to contact patients. In developing this project, conversations with Dr. Danielle Mowery, Director of Clinical Research Informatics Core (CIC), and Emily Schriver, a translational data scientist in the CIC, helped clarify how informatics can be applied to identify meaningful EHR features that support clinical teams in improving recruitment workflows. This problem is also closely tied to clinical research operations, since improving recruitment directly benefits those responsible for identifying, reaching out to, and enrolling participants.
 
 ## Methods {#sec-methods}
 
 ### Methods Overview
 
-This project involved two methodological phrases.
+This project involved two methodological phases.
 
 **Phase 1** focused on extracting note-level evidence related to the exclusion criteria using a Large Language Model (LLM) to classify unstructured notes in the EHR within a secure, HIPAA-compliant environment. This phase included identifying the study population, retrieving and de-identifying relevant notes, developing and freezing the LLM prompt, performing a light face-validity check on a small sample, and applying the prompt to assign each note to any of the three exclusion-context buckets.
 
-**Phase 2** used the de-identified, LLM-labeled notes to construct the analytic dataset ad evaluate which combinations of EHR note metadata (specialty, note type, encounter type, and temporal window) most effectively reveal clinically relevant contexts that influence CRC outreach decisions. This phase involved categorical feature engineering, handling missing metadata, and fitting logistic regression models in R to examine both the overall exclusion-context signals and category-specific patterns. All R data for feature engineering and modeling are included in this report.
+**Phase 2** used the LLM-generated labels with the note metadata to construct the analytic dataset and evaluate which combinations of EHR note metadata (specialty, note type, encounter type, and temporal window) most effectively reveal clinically relevant contexts that influence CRC outreach decisions. This phase involved categorical feature engineering, handling missing metadata, and fitting multivariable logistic regression models in R to examine both the overall exclusion-context signals and category-specific patterns. All R data for feature engineering and modeling are included in this report.
 
 ### PHASE 1 - LLM-Based Evidence Extraction
 
 ::: callout-important
-No functional code is included for Phase 1 because this phrase involved protected health information (PHI) and was completed entirely within Penn Medicine's HIPAA-compliant environments (Databricks and the LPC cluster). All patient identification, note retrieval, de-identification, and LLM processing were completed using SQL, Python, and R inside these secure workspaces. Important code snippets used during this phase are included.
+No functional code is included for Phase 1 because it involved protected health information (PHI) and was completed entirely within Penn Medicine's HIPAA-compliant environments (Databricks and the LPC cluster). All patient identification, note retrieval, de-identification, and LLM processing were completed using SQL, Python, and R inside these secure workspaces. Important code snippets used during this phase are included.
 :::
 
-#### [**Study Population**]{.underline}
+#### Study Population
 
 Patients were identified from a CRC-maintained spreadsheet containing all individuals who had recent visits to a Penn Medicine Sleep Center and were automatically and manually reviewed during screening for the NIH-funded OSA clinical trial. For this project, patients were included if:
 
 1.  They underwent manual chart review by the CRC, and
 2.  They were not recruited due to an exclusion classified as "Medical Condition" or "Other"
 
-From this group, the cohort were further restricted to patients with non-administrative exclusion signals that are most likely captured within unstructured clinical, pathology, and surgical notes (e.g. cancer, panic disorder, recent surgery, non-OSA sleep condition such as narcolepsy) which require extensive manual review.
+From this group, the cohort was further restricted to patients with non-administrative exclusion signals that are typically documented in unstructured clinical, pathology, and surgical notes (e.g. cancer, panic disorder, recent surgery, non-OSA sleep condition such as narcolepsy) which require substantial manual review.
 
 ``` sql
+-- SQL
 -- filtering for exclusions due to 'Medical Condition' and 'Other' and conditions requiring looking at notes
 create or replace temporary view pts_for_note_extraction as
 select
@@ -138,11 +142,12 @@ where
   )
 ```
 
-#### [**Data Sources and Note Retrieval**]{.underline}
+#### Data Sources and Note Retrieval
 
-Clinical notes were extracted from the Epic Clarity database on the Penn Medicine Azure Databricks environment. We included all clinical notes (e.g. progress notes, discharge summaries, ED notes) within one year prior to the CRC's pre-screening date, and all surgical and pathology notes to capture both operational skip signals and true contraindications. Note-level metadata (note type, encounter specialty, and encounter type) were also retrieved. Finally, each note was assigned to one of four temporal windows (0--30, 31--90, 91--180, and \>180 days).
+Clinical notes were extracted from the Epic Clarity database on the Penn Medicine Azure Databricks environment. We included all clinical notes (e.g. progress notes, discharge summaries, ED notes) within one year prior to the CRC's pre-screening date, and all documented surgical and pathology notes to capture both operational skip signals and true clinical contraindications. Note-level metadata (note type, encounter specialty, and encounter type) were also retrieved. Finally, each note was assigned to one of four temporal windows (0--30, 31--90, 91--180, and \>180 days) in relation to proximity to pre-screening (a field documented in the CRC spreadsheet).
 
 ``` {.r .R}
+# R
 # code applied to each surgical, clinical, and pathology notes dataframe to assign notes to temporal windows
 df %>%
   mutate(
@@ -163,6 +168,7 @@ df %>%
 Additionally, each note was prefixed with a standardized header indicating the temporal context of the note relative to the pre-screening date: `[TIME_RELATIVE_TO_PRESCREEN: <WINDOW_BIN> | DELTA_DAYS = <NUMBER>]`.
 
 ``` r
+# R
 # code applied to each surgical, clinical, and pathology notes dataframe to prefix note with temporal header
 df %>%
  # need to filter all notes after pre_screening_date 
@@ -181,32 +187,35 @@ df %>%
 Empty notes and notes deemed sensitive by the Penn Medicine Privacy Office were removed.
 
 ``` python
-# python code to remove empty notes 
+# Python
+# code to remove empty notes 
 all_notes_final = all_notes_pdf[all_notes_pdf["note"].str.strip().ne("")].query("note.notna()")
 all_notes_final
 ```
 
-The remaining notes were then deidentified using an adapted PHIlter implementation on the LPC cluster.
+The remaining notes were then de-identified using a Penn Medicine adapted version of [PHIlter](https://github.com/BCHSI/philter-ucsf) (Norgeot et al., 2020) installed on the LPC cluster.
 
-#### [**Exclusion Category Bucketing**]{.underline}
+#### Exclusion Category Bucketing
 
 Exclusion reasons were consolidated into higher level exclusion buckets due to the sparsity of the individual exclusion signals after reviewing the exclusion notes assigned by the CRC. The buckets were then used to organize how the LLM identified exclusion signals in the notes. Exclusions were grouped into the following three buckets
 
-+--------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------+
-| Exclusion Bucket                                 | Description                                                                                                                                     |
-+==================================================+=================================================================================================================================================+
-| Clinical Contraindications (`clinical_contra`)   | Major current clinical conditions that influence the decision to reach out to a patient because of medical instability of likely ineligibility. |
-+--------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------+
-| Procedural & Recent Events (`procedural_recent`) | Recent, ongoing, or upcoming procedures or clinical events that indicate current acute clinical episodes or need for recovery.                  |
-+--------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------+
-| Sleep-Specific Conditions (`sleep_specific`)     | Sleep-related diagnoses that indicate a patient has a non-OSA sleep disorder or condition.                                                      |
-+--------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------+
++--------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Exclusion Bucket                                 | Description                                                                                                                                                                                |
++==================================================+============================================================================================================================================================================================+
+| Clinical Contraindications (`clinical_contra`)   | Major and current clinical conditions that are true exclusions in the IRB protocol and/or conditions that influence the decision to reach out to a patient because of medical instability. |
++--------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Procedural & Recent Events (`procedural_recent`) | Recent, ongoing, or upcoming procedures or clinical events that indicate current acute clinical episodes or need for recovery.                                                             |
++--------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Sleep-Specific Conditions (`sleep_specific`)     | Sleep-related diagnoses that indicate a patient has a non-OSA sleep disorder or condition.                                                                                                 |
++--------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 ``` sql
+-- SQL
 -- consolidating exclusions to higher exclusion buckets
 select
   pat_id,
   pts_for_note_extraction_upd.*,
+  -- case when for higher level grouping
   CASE
     when
       notes in (
@@ -261,7 +270,7 @@ select
         'Experiencing memory/cognitive issues',
         'heart transplant',
         'squamous cell carcinoma of the palate',
-        'Dr.Schwab instructed CRC to exclude pt from study due to a significant stroke 9/11/25',
+        'Dr.X instructed CRC to exclude pt from study due to a significant stroke 9/11/25',
         'Congenital anomalies of skull/face bones'
       )
     then
@@ -298,14 +307,14 @@ select
       'sleep_specific'
   END AS excl_cat
 from
-  pts_for_note_extraction_upd
+  pts_for_note_extraction_upd -- used to get the mrn of the patient
     left join source_sys.raw_clarity.patient
       on pts_for_note_extraction_upd.mrn = patient.pat_mrn_id
 ```
 
-#### [**LLM Prompt Development, Evaluation, and Note-Level Output**]{.underline}
+#### LLM Prompt Development, Evaluation, and Note-Level Output
 
-The GPT-4o mini chat model available in the Penn Medicine Azure Databricks environment was used to evaluate each note and assign a 0/1 decision for each of the three exclusion categories. The prompt instructed the LLM to read each note (with its temporal prefix) and determine, for each category, whether the note contained information meeting that category's exclusion criteria (1 = meets criteria, 0 = does not), along with a brief rationale and a confidence score.
+The GPT-4o mini chat model available in Databricks was used to evaluate each note and assign a 0/1 decision for each of the three exclusion categories. The prompt instructed the LLM to read each note (with its temporal prefix) and determine, for each category, whether the note contained information meeting that category's exclusion criteria (1 = meets criteria, 0 = does not), along with a brief rationale and a confidence score.
 
 The prompt consisted of the following components:
 
@@ -319,13 +328,14 @@ The prompt consisted of the following components:
 
 -   the standardized output format.
 
-The full prompt sent to the LLM is included in the Appendix.
+The full prompt sent to the LLM is included [here](https://github.com/ashbatu/BMIN503_Final_Project/blob/master/llm_prompt/final_prompt.txt) in the Github repository.
 
-Abridged Python and SQL code used in the Databricks environment were included below to illustrate how notes were submitted to the LLM and how resulting outputs were parsed for downstream use.
+Abridged Python and SQL code used in Databricks were included below to illustrate how notes were submitted to the LLM and how resulting outputs were parsed for downstream use.
 
 The GPT-4o mini endpoint was invoked programatically and the LLM ran the prompt as shown below:
 
 ``` python
+# Python
 # code to call the gpt endpoint for the classification task
 config = LLMClassificationConfig.for_inference(
   text_column="note_text",
@@ -346,12 +356,12 @@ predictor = LLMClassificationPredictor(
 results = predictor.predict_batch(all_notes_final)
 ```
 
-An example of the formatted note input sent to the LLM is shown here (synthetic):
+An synthetic example of the formatted note input sent to the LLM is shown here:
 
 | \[TIME_RELATIVE_TO_PRESCREEN: 31--90d \| DELTA_DAYS = 55\]
 | 
-| DATE OF SERVICE: \*\*2025-03-20\*\*
-| PATIENT: \*\*\[NAME REDACTED\]\*\*
+| DATE OF SERVICE: \*\*DATE\*\*
+| PATIENT: \*\*NAME\*\*
 | Seen in ENT for evaluation of nasal obstruction.
 | Completed a home sleep study showing moderate OSA.
 | Scheduled for elective orthopedic procedure next month.
@@ -377,11 +387,12 @@ The model returned a structured JSON response containing three sets of binary la
 }
 ```
 
-This JSON was then parsed into a dataframe for creating the analytical dataset with one row per note, including the predicted exclusion flags, rationales, confidence scores, and also token usage and note-level identifiers for joining with the note metadata.
+This JSON was then parsed into a dataframe for creating the analytic dataset with one row per note, including the predicted exclusion flags, rationales, confidence scores, and also token usage and note-level identifiers for joining with the note metadata.
 
-To assess the quality of the prompt, patients were split in 60/40 training and testing sets while also maintaining the proportion of the rolled up exclusion buckets. The prompt was first applied to all notes for patients in the training set. Performance of the prompt was evaluated based on (1) how well the LLM identified the exclusion categories and (2) a manual review of 5 patients per category to ensure that the LLM-generated rationales aligned with the note text. Once ≥80% coverage was achieved, the prompt was frozen and then applied to the entire dataset (training and testing notes). Coverage was computed with the following code:
+To assess the quality of the prompt, patients were split in 60/40 training and testing sets while also maintaining the proportion of the rolled up exclusion buckets. The prompt was first applied to all notes for patients in the training set. Performance of the prompt was evaluated based on (1) patient-level recall for each exclusion category, which was defined as the percent of CRC-excluded patients who had at least one note flagged by the LLM in the same category, and (2) a manual review of five patients per category to ensure that the LLM-generated rationales matched the note text and that the context made sense. Once ≥ 80% coverage was achieved, the prompt was frozen and then applied to the entire dataset (training and testing notes). Coverage was computed with the following code:
 
 ``` sql
+# SQL
 # computing coverage per category
 with train_pred_true as (
   SELECT
@@ -395,7 +406,7 @@ with train_pred_true as (
     MAX(pred_sleep_specific) AS sleep_specific_all
   FROM
     biomedicalinformatics_analytics.pack_osa_nlp.training_all_results
-      inner join train_pts
+      inner join train_pts -- joining to get actual assignments
         on training_all_results.pat_id = train_pts.pat_id
   GROUP BY
     training_all_results.pat_id,
@@ -403,6 +414,8 @@ with train_pred_true as (
     train_pts.notes,
     train_pts.excl_cat
 ),
+
+-- string assignment to true exclusion captured or not
 train_pred_true_outcomes as (
   select
     *,
@@ -441,6 +454,8 @@ train_pred_true_outcomes as (
   from
     train_pred_true
 ),
+
+# getting coverage by category (out of 1.0) 
 coverage_by_cat AS (
   SELECT
     'clinical_contra' AS category,
@@ -484,6 +499,7 @@ coverage_by_cat AS (
 SELECT
   category,
   coverage,
+  -- assigns as passing coverage threshold or not
   CASE
     WHEN coverage >= 0.8 THEN 1
     ELSE 0
@@ -492,13 +508,21 @@ FROM
   coverage_by_cat;
 ```
 
+##### LLM Prompt Evaluation Results
+
+The LLM prompt was evaluated using 1,735 notes from 97 patients in the training set. Patient-level recall was high across all exclusion categories from the first version of the prompt: 98.7% for clinical contraindications, 94.6% for recent procedures, and 95.2% for sleep-specific exclusions. This indicates that the model reliably identified patients who should be excluded.
+
+A manual review of 271 notes from 15 patients (5 patients per exclusion bucket) was also done to assess whether the LLM's explanations aligned with the context of each note. There were only two cases where the LLM's rationale differed from the CRC's exclusion reasons. However, both patients were still correctly excluded in the appropriate bucket.
+
+Because all exclusion buckets exceeded the 80% recall threshold and the rationales made sense, the prompt was frozen and applied to the entire dataset (training and testing notes) to complete the multi-classification task and generate the outcome variables (prediction flags) used for downstream modeling.
+
 ### PHASE 2 - Regression Modeling and Interpretation of Note Metadata Predictors
 
 After Phase 1 produced note-level exclusion flags, the next step was to build the analytic dataset by performing feature engineering and preparing predictors for the regression modeling.
 
-#### [**Loading Required Packages**]{.underline}
+#### Loading Required Packages
 
-To preprocess the analytic dataset and to conduct regression modeling the following packaged are loaded:
+To preprocess the analytic dataset and to conduct regression modeling, the following packages are loaded:
 
 ```{r}
 require(tidyverse) # for tidy packages needed for data cleaning
@@ -506,7 +530,7 @@ require(modelsummary) # for summary of model performance
 require(DescTools) # for data cleaning
 ```
 
-#### [**Loading the De-Identified Note-Level Dataset**]{.underline}
+#### Loading the De-Identified Note-Level Dataset
 
 The de-identified LLM results created in Phase 1 were exported from Databricks as a CSV and imported as a dataframe into R. Each row represents a single clinical note with its associated metadata and LLM-derived exclusion predictions. The data was loaded as follows:
 
@@ -515,7 +539,7 @@ notes_metadata <- read_csv('../datasets/notes_data.csv')
 notes_metadata
 ```
 
-#### [**Handling Null Values and Converting Metadata Fields to Factor Type**]{.underline}
+#### Handling Null Values and Converting Metadata Fields to Factor Type
 
 Because Databricks exports missing character fields as the literal string 'null', these must be converted to proper NA values:
 
@@ -539,7 +563,7 @@ notes_metadata <- notes_metadata %>%
 notes_metadata 
 ```
 
-#### [**Creating Modeling Outcomes**]{.underline}
+#### Creating New Overall Modeling Outcome
 
 In addition to the three note-level exclusion categories (`clinical_contra`, `procedural_recent`, and `sleep_specific`) that were created in Phase 1, a new combined "overall exclusion" was created. This new variable identifies whether any of the exclusion signals (clinical, procedural, or sleep-specific) was present in a note. This new outcome allows for conducting a more general analysis of note contexts that are associated with exclusion relevant signals regardless of the category.
 
@@ -554,7 +578,7 @@ notes_metadata <- notes_metadata %>%
 notes_metadata
 ```
 
-#### **I[nspecting Metadata Distributions Prior to Collapsing]{.underline}**
+#### Inspecting Metadata Distributions Prior to Collapsing
 
 Since this dataset is a relatively small sample of notes (n = 2,911 notes), I checked to see the count of notes associated with each factor level to assess how smaller sample sizes can be collapsed and joined with other levels. This was done because sparse categories can destabilize logistic regression which may lead to potential overfitting, biased estimates, and overestimating odds ratios.
 
@@ -652,9 +676,9 @@ notes_metadata <- notes_metadata %>%
 notes_metadata
 ```
 
-#### [**Harmonizing Note Type Fields**]{.underline}
+#### Harmonizing Note Type Fields
 
-In the dataset there are two fields that capture the note type: `ip_note_type` and `note_type`. As shown in the code below, these fields tend to overlap. To address this, I create one harmonized field called `note_type_final`. This field selects the non-Unknown value when one field is populated, collapsed when both fields have the same value, or Unknown when neither field is populated:
+In the dataset, there are two fields that capture the note type: `ip_note_type` and `note_type`. As shown in the code below, these fields tend to overlap. To address this, I create one harmonized field called `note_type_final`. This field selects the non-Unknown value when one source is populated, collapses matching values, and assigns 'Unknown' when both fields are empty:
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # showing distinct ip_note_type and note_type
@@ -666,15 +690,24 @@ notes_metadata %>%
 notes_metadata <- notes_metadata %>% 
   # case when below used to get the non unknown value for note_type_final field
   mutate(note_type_final = 
-           factor(case_when(ip_note_type != 'Unknown' & note_type == 'Unknown' ~ ip_note_type,
-                     ip_note_type == "Unknown" & note_type != 'Unknown' ~ note_type,
-                     ip_note_type == "Unknown" & note_type == "Unknown" ~ 'Unknown',
-                     ip_note_type == note_type ~ note_type))) %>% 
+           factor(case_when(
+             # keeps not unknown ip_note_type value
+             ip_note_type != 'Unknown' & note_type == 'Unknown' ~ ip_note_type, 
+             # keeps not unknown note_type value
+             ip_note_type == "Unknown" & note_type != 'Unknown' ~ note_type,
+             # assigns unknown because boths fields have an unknown value
+             ip_note_type == "Unknown" & note_type == "Unknown" ~ 'Unknown',
+             # collapses matching values
+             ip_note_type == note_type 
+             ~ note_type
+             ## NOTE: Conflicting cases is not addresses because based on the code above, 
+             ## this does not happen
+             ))) %>% 
   relocate(note_type_final, .after = note_type)
-notes_metadata
+notes_metadata 
 ```
 
-After pre-processing and collapsing factors, I performed final quality checks of the analytic dataset before modeling by assessing the distribution of notes based on each exclusion prediction:
+After pre-processing and collapsing factors, I performed final quality checks of the analytic dataset before modeling by assessing the distribution of notes based on each LLM-based exclusion prediction:
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # looking at count for classes (exclusion present or not)
@@ -684,7 +717,7 @@ table(notes_metadata$pred_procedural_recent)
 table(notes_metadata$pred_sleep_specific)
 ```
 
-Because the positive class counts for `pred_procedural_recent` and `pred_sleep_specific` were small, both categories were combined into a single indicator, `pred_other_excl`. This aggregation also reflects the CRC's real pre-screening workflow in which exclusions are grouped in 'Medical Condition' versus 'Other'. 'Medical Condition' exclusions are represented by `pred_clinical_contra` and 'Other' exclusions are represented by `pred_other_excl` (the union of procedural and sleep-related exclusion detections). Doing this will help increase statistical stability:
+Because the positive class counts for `pred_procedural_recent` and `pred_sleep_specific` were small, both categories were combined into a single indicator, `pred_other_excl`. This aggregation also reflects the CRC's real pre-screening workflow in which exclusions are grouped as 'Medical Condition' versus 'Other'. 'Medical Condition' exclusions are represented by `pred_clinical_contra` and 'Other' exclusions are represented by `pred_other_excl` (the union of procedural and sleep-related exclusion buckets). Doing this will help increase statistical stability:
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=TRUE}
 notes_metadata <- notes_metadata %>% 
@@ -702,7 +735,7 @@ Below is the new distribution with the `pred_other_excl` field:
 table(notes_metadata$pred_other_excl)
 ```
 
-#### [**Building the final modeling dataset**]{.underline}
+#### Building the final modeling dataset
 
 Finally, I created the model-ready dataset for regression. This includes the four outcome variables (`pred_overall_excl`, `pred_clinical_contra`, `pred_procedural_recent`, and `pred_sleep_specific`) and the note metadata predictors (`note_type_final`, `specialty`, `encounter_type`, and `window_bin`). A row identifier was also added to the dataset and `source` which indicates the type of note (clinical, pathology, or surgical note) for descriptive statistics and characterizing the dataset:
 
@@ -717,11 +750,12 @@ model_df <- notes_metadata %>%
          encounter_type, 
          window_bin,
          source) %>% 
-  mutate(row = row_number())
+  mutate(row = row_number()) %>% 
+  relocate(row, .before = pred_overall_excl)
 model_df
 ```
 
-#### [**Modeling Strategy**]{.underline}
+#### Modeling Strategy
 
 To determine which note metadata features are most strongly associated with exclusion-relevant notes, multivariable logistic regression models were used. This method allows predictors to be evaluated simultaneously, which provide estimates of the direction and strength of the association between the metadata features and the binary exclusion indicators.
 
@@ -739,7 +773,7 @@ Because this project is exploratory and inferential (rather than predictive), mo
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # code is used to create table for cohort/note summary
-require(kableExtra)
+require(kableExtra) # for generating pretty tables
 # total counts
 overall_counts <- notes_metadata %>%
   summarize(
@@ -799,7 +833,7 @@ tibble::tibble(
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-library(gtsummary)
+library(gtsummary) # for generating pretty output tables
 
 # code below is used to get breakdown for each note metadata field
 table_2_notelevelmetadata <- model_df %>%
@@ -884,7 +918,7 @@ note_type_plot <- model_df %>%
   ) +
   
   labs(
-    title = "Distribution of Clinical Notes by Note Type",
+    title = "Distribution of All Notes by Note Type",
     x = "Note type",
     y = "Number of notes",
     fill = "Note type"
@@ -929,7 +963,7 @@ specialties_plot <- model_df %>%
   ) +
   
   labs(
-    title = "Distribution of Clinical Notes by Specialty",
+    title = "Distribution of All Notes by Specialty",
     x = "Specialty",
     y = "Number of notes",
     fill = "Specialty"
@@ -951,6 +985,10 @@ specialties_plot
 #   dpi = 300
 # )
 ```
+
+::: callout-note
+Many of the notes have an 'Unknown' specialty which is likely due to how the specialty field is populated during Extract-Transform-Load (ETL) into Epic Clarity. This does not indicate a problem with the analytic dataset itself.
+:::
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # distribution of encounter type
@@ -974,7 +1012,7 @@ encounter_type_plots <- model_df %>%
   ) +
   
   labs(
-    title = "Distribution of Clinical Notes by Encounter Type",
+    title = "Distribution of All Notes by Encounter Type",
     x = "Encounter Type",
     y = "Number of notes",
     fill = "Encounter Type"
@@ -1019,7 +1057,7 @@ time_windows_plot <- model_df %>%
   ) +
   
   labs(
-    title = "Distribution of Clinical Notes by Time Window",
+    title = "Distribution of All Notes by Time Window",
     x = "Time Window Bin",
     y = "Number of notes",
     fill = "Time Window Bin"
@@ -1042,7 +1080,7 @@ time_windows_plot
 # )
 ```
 
-A total of 2,911 notes for 164 patients between September 2011 through November 2024 were included (de-identified). As shown in the tables and figures above, the data was highly imbalanced across the different note-level metadata categories, reflecting real-world documentation patterns and nuances. Most notes were progress notes (79%), and nearly half of all notes occurred more than 180 days prior to pre-screening. Notes originated from 29 different specialties with approximately 20% coming from unknown specialties due to limitations in data capture in the Epic Clarity database.
+A total of 2,911 de-identified notes for 164 patients between September 2011 through November 2025 were included. As shown in the tables and figures above, the data was highly imbalanced across the different note-level metadata categories, reflecting real-world documentation patterns and nuances. Most notes were progress notes (79%), and nearly half of all notes occurred more than 180 days prior to pre-screening. Notes originated from over 20 different specialties with approximately 20% coming from unknown specialties due to limitations in data capture in the Epic Clarity database.
 
 ### Regression Modeling
 
@@ -1168,8 +1206,7 @@ overall_model_odds_plot
 ```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=TRUE}
 # table view of of odds ratio, 95% CI, p_value < 0.05
 glm_overall %>% 
-  mutate(across(c(p_value, estimate, standard_error, odds_ratio, ci_min, ci_max), 
-                ~round(.x, digits = 2))) %>% # rounding 
+  mutate(across(c(p_value, estimate, standard_error, odds_ratio, ci_min, ci_max))) %>%
   select(term, p_value, odds_ratio, ci_min, ci_max) %>% 
   mutate(`95% CI` = 
            paste0("(", ci_min, "-", ci_max, ")")) %>% 
@@ -1183,7 +1220,7 @@ glm_overall %>%
 table(model_df$pred_clinical_contra) 
 ```
 
-Since the distribution of notes with and without exclusions are imbalanced (41% vs 59%) with more notes not having clinical contraindications, inverse-frequency weighting was applied to prevent the model from favoring the majority class for predictions. Through Inverse class weighting the minority class gets a larger weight:
+Since the distribution of notes with and without exclusions are imbalanced (41% vs 59%) with more notes not having clinical contraindications, inverse-frequency weighting was applied to prevent the model from favoring the majority class (notes without exclusions) for predictions. Through Inverse class weighting, the minority class (notes with exclusions) gets a larger weight:
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # getting sum of counts for majority and minority class
@@ -1285,7 +1322,7 @@ glm_model_clinical %>%
 table(model_df$pred_other_excl) # reminder of the distribution --> very unevenly distributed
 ```
 
-Because the distribution of notes without and without exclusions are also imbalanced (78%/22%) with more notes not having procedural & recent events and sleep-related exclusions, inverse-frequency weighting was applied to this model also:
+Because the distribution of notes without and with exclusions are also imbalanced (78%/22%) with more notes not having procedural & recent events and sleep-related exclusions, inverse-frequency weighting was applied to this model also:
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # getting sum for majority and minority classes
@@ -1379,15 +1416,15 @@ glm_model_other %>%
 
 ##### Overall Exclusion Model
 
-Encounter type and temporal proximity to screening were the strongest predictors of exclusion-relevant context. Hospital encounters had very high odds (OR=17.1, CI=8.8-33.9, p-value\<0.05) and office visits were also strongly associated (OR=10.2, CI=6.7-16.0, p-value\<0.05). Notes written within 0-30 days of pre-screening had nearly four times higher odds (OR=4.20, CI=3.1-5.7, p-value\<0.05). Several specialties (e.g., Renal, Neurology, Cardiology, Hematology/Oncology, Sleep Medicine, and PM&R) also showed higher odds (all ORs \> 5) but confidence intervals were wider because of sparse note counts. Note type contributed the least with several note types having odds ratios below 1 and wide confidence intervals. Overall, exclusion information is most strongly associated with encounter type and recency.
+Encounter type and temporal proximity to screening were the strongest predictors of exclusion-relevant context. Hospital encounters had very high odds (Odds Ratio (OR)=17.1, Confidence Interval (CI)=8.8-33.9, p-value\<0.05) and office visits were also strongly associated (OR=10.2, CI=6.7-16.0, p-value\<0.05). Notes written within 0-30 days of pre-screening had nearly four times higher odds (OR=4.20, CI=3.1-5.7, p-value\<0.05). Several specialties (e.g., Renal, Neurology, Cardiology, Hematology/Oncology, Sleep Medicine, and Physical Medicine and Rehabilitation (PM&R)) also showed higher odds (all ORs \> 5) but confidence intervals were wider because of sparse note counts. Note type contributed the least with several note types having odds ratios below 1 and wide confidence intervals. Overall, exclusion information is most strongly associated with encounter type and recency.
 
 ##### Clinical Contraindications Model
 
-For clinical contraindications, encounter type and specialty were the main drivers. Office, Hospital, telemedicine, and reconciled outside data encounters were associated with higher odds of exclusion content (all ORs \> 6). However, procedure/treatment encounters were unlikely to contain clinical contraindication signals (OR=0.10, CI=0.03-0.3, p-value\<0.05). Renal, Cardiology, Hematology/Oncology, Psychiatry, and Neurology were statistically significant specialties, but with wide confidence intervals due to sparese notes (e.g. Renal OR=14.1, CI=3.2-63.8, p-value\<0.05). Recency was not significant in this model which is consistent with chronic conditions remaining relevant regardless of when the note was written. Finally, note types effects were smaller. ED, operative, and H&P notes still had lower odds of containing exclusion-relevant content (e.g. Operative Note OR=0.06, CI=0.01-0.2, p-value\<0.05). Additionally progress notes was no longer a statistically significant predictor (p-value = 0.1).
+For clinical contraindications, encounter type and specialty were the main drivers. Office, Hospital, telemedicine, and reconciled outside data encounters were associated with higher odds of exclusion content (all ORs \> 6). However, procedure/treatment encounters were unlikely to contain clinical contraindication signals (OR=0.10, CI=0.03-0.3, p-value\<0.05). Renal, Cardiology, Hematology/Oncology, Psychiatry, and Neurology were statistically significant specialties, but with wide confidence intervals due to sparse notes (e.g. Renal OR=14.1, CI=3.2-63.8, p-value\<0.05). Recency was not significant in this model which is consistent with chronic conditions remaining relevant regardless of when the note was written. Finally, note types effects were smaller. Emergency Department (ED), operative, and History and Physical (H&P) notes still had lower odds of containing exclusion-relevant content (e.g. Operative Note OR=0.06, CI=0.01-0.2, p-value\<0.05). Additionally progress notes was no longer a statistically significant predictor (p-value = 0.1).
 
 ##### Procedural and Sleep Related ('Other') Model
 
-For recent procedures and sleep-specific exclusions, encounter type and temporal proximity to pre-screening were again the stronger predictors. Hospital encounters had high odds (OR=9.9, CI=4.5-22.7, p-value\<0.05) and notes within 0-30 days from pre-screening had the highest odds of containing exclusion-related information (OR=11.4, CI=7.9-16.7, p-value\<0.05). At the same time, other time bins were statistically significant but with smaller effect sizes (e.g. 31-90 days OR=1.67, CI=1.3-2.2, p-value\<0..05). Specialty effects were limited with PM&R as positive and endocrinology as negative and with very wide confidence intervals for both predictor terms. Finally note types remained a weak predictor (e.g. Operative Note OR=0.2, CI=0.04-0.5, p-value\<0.05). This model reinforces that recent notes in specific encounter settings and temporal recency is the main source of procedural and sleep-specific exclusion signals.
+For recent procedures and sleep-specific exclusions, encounter type and temporal proximity to pre-screening were again the stronger predictors. Hospital encounters had high odds (OR=9.9, CI=4.5-22.7, p-value\<0.05) and notes within 0-30 days from pre-screening had the highest odds of containing exclusion-related information (OR=11.4, CI=7.9-16.7, p-value\<0.05). At the same time, other time bins were statistically significant but with smaller effect sizes (e.g. 31-90 days OR=1.67, CI=1.3-2.2, p-value\<0..05). Specialty effects were limited with PM&R as positive and endocrinology as negative and with very wide confidence intervals for both predictor terms. Finally, note types remained a weak predictor (e.g. Operative Note OR=0.2, CI=0.04-0.5, p-value\<0.05). This model reinforces that recent notes in specific encounter settings and temporal recency is the main source of procedural and sleep-specific exclusion signals.
 
 ### Stability Analysis (Bootstrap Resampling)
 
@@ -1786,20 +1823,20 @@ summary_other_boot_results %>%
 
 #### Bootstrapping Interpretation
 
--   **Overall Model:** 29 of 41 predictors (71%) retained the same directional effect in \>= 90% of bootstrap iterations and no predictors had random-looking effects (\<= 50% consistency in directional effect). Encounter type (e.g. Hospital Encounter = Median OR=17.8, IQR=1.5-2.3) and time window (e.g. 0-30 days OR=4.3, IQR=3.9-4.8) also had relatively narrow bootstrap IQRs and high median ORs, which support stability in effect sizes
+-   **Overall Model:** 29 of 41 predictors (71%) retained the same directional effect in ≥ 90% of bootstrap iterations and no predictors had random-looking effects (**≤** 50% consistency in directional effect). Encounter type (e.g. Hospital Encounter = Median OR=17.8, Interquartile range (IQR)=1.5-2.3) and time window (e.g. 0-30 days OR=4.3, IQR=3.9-4.8) also had relatively narrow bootstrap IQRs and high median ORs, which support stability in effect sizes.
 
--   **Clinical Contraindications Model**: 0 of 41 terms (49%) showed \>= 90% directional stability. Encounter type remained the strongest and most reliable predictor (e.g. Hospital Encounter OR=17.9, IQR=14.0-22.8) and several specialties (e.g. Heme/Onc OR=10.6, IQR=6.7-17.8) were directionally stable but effects are less certain because of wider IQRs (e.g. Heme/Onc OR=10.6, IQR=6.7-17.8). This uncertainty in magnitude is due to limited note counts.
+-   **Clinical Contraindications Model**: 20 of 41 terms (49%) showed ≥ 90% directional stability. Encounter type remained the strongest and most reliable predictor (e.g. Hospital Encounter OR=17.9, IQR=14.0-22.8) and several specialties (e.g. Heme/Onc OR=10.6, IQR=6.7-17.8) were directionally stable but effects are less certain because of wider IQRs (e.g. Heme/Onc OR=10.6, IQR=6.7-17.8). This uncertainty in magnitude is due to limited note counts.
 
--   **'Other' Model (procedural + sleep):** Directional stability was lower (18 terms \>= 90%), especially for specialty terms (average directional stability = 74.6%). One specialty (e.g. REI) switched signs in about half of the bootstrap resamples (50.6%). However, encounter type (e.g. Hospital Encounter OR=13.7, IQR=10.3-18.1) and recency remained stable with relatively narrow IQRs across resamples (0-30 days OR=9.3, IQR=8.3-10.6).
+-   **'Other' Model (procedural + sleep):** Directional stability was lower (18 terms ≥ 90%), especially for specialty terms (average directional stability = 74.6%). One specialty (e.g. Reproductive Endocrinology and Infertility (REI)) switched signs in about half of the bootstrap resamples (50.6%). However, encounter type (e.g. Hospital Encounter OR=13.7, IQR=10.3-18.1) and recency remained stable with relatively narrow IQRs across resamples (0-30 days OR=9.3, IQR=8.3-10.6).
 
-In summary, these bootstrapping results show that encounter type and time window are the most robust features across all of the models, whereas specialty and note type are are more variable. Because of this, the effects of specialty and note type should be interpreted more cautiously.
+In summary, these bootstrapping results show that encounter type and time window are the most robust features across all of the models, whereas specialty and note type are more variable. Because of this, the effects of specialty and note type should be interpreted more cautiously.
 
 Finally, the key findings from this project are summarized in the table below. Across all models, encounter type was the strongest and most reliable metadata feature for identifying exclusion-relevant content. Additionally, recency and temporal windows were also informative, especially for recent procedural exclusions. In contrast, note type was not a meaningful indicator of exclusion context.
 
 +-----------------------------------------------------------+-------------------------------------------------------------------------+------------------------------------+-------------------------------------------------------------------------+
 | Category                                                  | Overall Exclusion Model                                                 | Clinical Contraindications Model   | Other (Recent Procedures + Sleep Exclusions) Model                      |
 +===========================================================+=========================================================================+====================================+=========================================================================+
-| **Strongest Effect (Highest OR)**                         | Renal (specialty)                                                       | Hospital Encounter (encounte type) | 0--30 days (window bin)                                                 |
+| **Strongest Effect (Largest OR)**                         | Renal (specialty)                                                       | Hospital Encounter (encounte type) | 0--30 days (window bin)                                                 |
 |                                                           |                                                                         |                                    |                                                                         |
 |                                                           | OR = 19.5                                                               | OR = 16.5                          | OR = 11.4                                                               |
 +-----------------------------------------------------------+-------------------------------------------------------------------------+------------------------------------+-------------------------------------------------------------------------+
@@ -1816,6 +1853,18 @@ From this study, I was able to use LLM-based classification and multivariable lo
 
 There were also several limitations. Although I manually spot-checked the reliability of LLM classification output, the note labels were not fully adjudicated by study coordinators or the clinical team. The cohort for this study was also small (164 patients and 2,911 notes) which may limit statistical power and increase uncertainty in the estimates. Finally, the results of this study may not be generalizable beyond this study population, sleep medicine, or even the Penn Medicine system.
 
-Even with these limitations, the proposed workflow of using LLMs to extract exclusion signals and regression analysis of note metadata could be beneficial for clinical research in general. Specifically, this would provide greater transparency and standardization in the pre-screening process by exposing the informal patterns that CRCs rely on when deciding who to skip, which may then help identify define informal screening rules that could minimize recruitment bias.
+Even with these limitations, the proposed workflow of using LLMs to extract exclusion signals and regression analysis of note metadata could be beneficial for clinical research recruitment in general. Specifically, this would provide greater transparency and standardization in the pre-screening process by exposing the informal patterns that CRCs rely on when deciding who to skip, which may then help define informal screening rules that could minimize recruitment bias.
 
 For future directions, it will be important to validate the LLM output with CRC adjudication to determine whether the identified metadata predictors are plausible to the CRC. It will also be valuable to test whether the results from this project actually improve screening efficiency in practice.
+
+## References
+
+Cai, T., Cai, F., Dahal, K. P., Cremone, G., Lam, E., Golnik, C., Seyok, T., Hong, C., Cai, T., & Liao, K. P. (2021). Improving the efficiency of clinical trial recruitment using an ensemble machine learning to assist with eligibility screening. *ACR Open Rheumatology, 3*(10), 593--600. https://doi.org/10.1002/acr2.11289
+
+Etchberger, K. (2016, November 7). *Chart Review: Should Sponsors Pay for Clinical Research Sites to Review Charts?*. LinkedIn. https://www.linkedin.com/pulse/chart-review-should-sponsors-pay-clinical-research-sites-etchberger#:\~:text=Some%20trials%20remain%20very%20complicated,takes%20to%20find%20those%20patients.
+
+Lai, Y.S. & Afseth, J.D. (2019). A review of the impact of utilising electronic medical records for clinical research recruitment. *Clinical Trials, 16*(2):194-203. https://doi.org/10.1177/17407745198297
+
+Motamedi, K. K., McClary, A. C., & Amedee, R. G. (2009). Obstructive sleep apnea: a growing problem. *Ochsner journal*, *9*(3), 149--153.
+
+Norgeot, B., Muenzen, K., Peterson, T.A. et al. (2020). Protected Health Information filter (Philter): accurately and securely de-identifying free-text clinical notes. *npj Digit. Med. 3*:57. https://doi.org/10.1038/s41746-020-0258-y
