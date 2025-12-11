@@ -18,5 +18,7 @@ This project examined which note-level metadata features are associated with cli
     - **final_report_BATUGO.html**: Html file of the report
     - **final_report_BATUGO.qmd**: qmd file of the report
     - **osa-report-theme.css**: css styling for the project report
+3. **llm_prompt**: Subdir containing file with final LLM prompt
+    - **final_prompt.txt**: Text file with final LLM prompt
 
 
