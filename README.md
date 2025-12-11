@@ -1,5 +1,6 @@
 # Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals
 **Author:** Ashley Batugo 
+
 (ashley[dot]batugo[at]pennmedicine[dot]upenn[dot]edu)
 
 ## Overview 
