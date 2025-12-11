@@ -3,11 +3,24 @@
 
 ## Overview 
 
-This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) study using LLM extracted note-level evidence, to aggregate these signals into a patient-level dataset. Logistic regression was conducted using the patient-level dataset to identify which metadata features were most associated with both informal and formal exclusionary contexts.
+This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA). Large Language Models were used to extract note level exclusion flags and multivariable logistic regression models used these exclusion flags (the outcome veriable) to identify the most important metadata features.
 
 ## Repository Structure
 
-1. **final_project_BATUGO.html**: HTML file of the final project report.
-2. **final_project_BATUGO.qmd**: QMD file of the final project report.
+1. **final_presentation**: Subdir containing files related to the project presentation
+    - **./css**: Relevant css for xarigan slides
+    - **./img**: Main image for presentation 
+    - **BMIN5030_PRES_BATUGO.Rmd**: Rmd file of the presentation
+    - **BMIN4030_PRES_BATUGO.html**: Html file of the presentation
+2. **final_report**: Subdir containing files relation to the project report
+    - **final_report_BATUGO.html**: Html file of the report
+    - **final_report_BATUGO.qmd**: qmd file of the report
+    - **osa-report-theme.css**: css styling for the project report
+    
+    
+
+
+
+########## Contact: ashley[dot]batugo[at]pennmedicine[dot]upenn[dot]edu
 
 
