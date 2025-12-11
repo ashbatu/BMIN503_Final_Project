@@ -1,5 +1,6 @@
 # Identifying Screening-Relevant Context in an OSA Study Using Clinical Note Metadata and LLM-Extracted Signals
-**Author:** Ashley Batugo
+**Author:** Ashley Batugo 
+(ashley[dot]batugo[at]pennmedicine[dot]upenn[dot]edu)
 
 ## Overview 
 
@@ -16,9 +17,5 @@ This project examined which note-level contextual and metadata features are asso
     - **final_report_BATUGO.html**: Html file of the report
     - **final_report_BATUGO.qmd**: qmd file of the report
     - **osa-report-theme.css**: css styling for the project report
-    
-## Email
-
-ashley[dot]batugo[at]pennmedicine[dot]upenn[dot]edu
 
 
