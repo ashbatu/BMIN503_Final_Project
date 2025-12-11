@@ -5,7 +5,7 @@
 
 ## Overview 
 
-This project examined which note-level contextual and metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA). Large Language Models were used to extract note level exclusion flags and multivariable logistic regression models used these exclusion flags (the outcome veriable) to identify the most important metadata features.
+This project examined which note-level metadata features are associated with clinical research coordinator (CRC) exclusion decisions during screening for an NIH-funded Obstructive Sleep Apnea (OSA) clinical study. Large Language Models were used to extract note level exclusion flags, and multivariable logistic regression models used these exclusion flags (the outcome veriable) to identify the most important metadata features.
 
 ## Repository Structure
 
